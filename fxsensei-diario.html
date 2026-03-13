@@ -773,13 +773,16 @@ function showApp(){
   if(app) app.style.display='block';
 }
 
+let _appBooted = false;
+
 sb.auth.onAuthStateChange(async (_event, session) => {
   try{
-    if(session?.user){
+    if(_event === 'SIGNED_IN' && _appBooted){
       currentUser = session.user;
       await initApp();
-    } else {
+    } else if(_event === 'SIGNED_OUT'){
       currentUser = null;
+      _appBooted = false;
       showAuth();
     }
   }catch(e){
@@ -795,13 +798,14 @@ async function bootstrapApp(){
     if(error) throw error;
     if(data?.session?.user){
       currentUser = data.session.user;
+      _appBooted = true;
       await initApp();
     }else{
       showAuth();
     }
   }catch(e){
     console.error('Bootstrap error:', e);
-    showAuth('Erro ao iniciar a aplicação. Valida a configuração Supabase na consola.');
+    showAuth('Erro ao iniciar. Abre a consola e valida a configuração Supabase.');
   }
 }
 
@@ -818,6 +822,11 @@ async function initApp(){
     const fs=localStorage.getItem('fxs_fs')||'16';
     applyFS(fs);
     if($('fsrange')) $('fsrange').value=fs;
+    fillPTLink();
+    renderPretradeHistory();
+    renderTradeHistory();
+    renderDash();
+    setLanguage(currentLang);
     calcScore();
   }catch(e){
     console.error('initApp error:', e);
