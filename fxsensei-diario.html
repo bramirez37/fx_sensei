@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FX Sensei — Diário de Trading</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--font-display:'Cormorant Garamond',serif;--font-mono:'IBM Plex Mono',monospace;--font-body:'DM Sans',sans-serif;--font-size:16px}
+    body.dark{--bg:#07090f;--surface:#0d1117;--card:#111827;--border:#1e2d3d;--muted:#4a5568;--text:#e2e8f0;--subtext:#94a3b8;--gold:#e8b84b;--gold-dim:#a07a20;--cyan:#38bdf8;--green:#22c55e;--red:#f43f5e;--amber:#f59e0b;--tip-bg:#1e2d3d;--tip-text:#e2e8f0}
+    body.light{--bg:#f5f3ee;--surface:#fff;--card:#fff;--border:#e2d9cc;--muted:#9ca3af;--text:#1a1a2e;--subtext:#4b5563;--gold:#b8861f;--gold-dim:#a07a20;--cyan:#0369a1;--green:#15803d;--red:#be123c;--amber:#d97706;--tip-bg:#1a1a2e;--tip-text:#f5f3ee}
+    html,body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--font-size);min-height:100vh;line-height:1.6;transition:background .35s,color .35s}
+
+    /* AUTH SCREEN */
+    .auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+    .auth-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2.5rem;width:min(90vw,400px)}
+    .auth-logo{font-family:var(--font-display);font-size:2rem;font-weight:600;color:var(--gold);margin-bottom:.25rem}
+    .auth-logo span{color:var(--subtext);font-weight:300;font-style:italic}
+    .auth-sub{font-size:.75rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2rem}
+    .auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.75rem}
+    .auth-tab{background:none;border:none;color:var(--muted);font-family:var(--font-body);font-size:.82rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:.65rem 1rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+    .auth-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+    .auth-field{display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem}
+    .auth-field label{font-size:.72rem;font-weight:500;color:var(--subtext);letter-spacing:.04em;text-transform:uppercase}
+    .auth-field input{background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--font-body);font-size:.95rem;padding:.6rem .8rem;outline:none;transition:border-color .2s;width:100%}
+    .auth-field input:focus{border-color:var(--gold)}
+    .auth-btn{background:var(--gold);border:none;border-radius:6px;color:#07090f;cursor:pointer;font-family:var(--font-body);font-size:.85rem;font-weight:600;letter-spacing:.07em;padding:.72rem 2rem;text-transform:uppercase;transition:all .2s;width:100%;margin-top:.5rem}
+    .auth-btn:hover{filter:brightness(1.1)}
+    .auth-btn:disabled{opacity:.5;cursor:not-allowed}
+    .auth-err{font-size:.8rem;color:var(--red);margin-top:.5rem;min-height:1.2em}
+    .auth-msg{font-size:.8rem;color:var(--green);margin-top:.5rem}
+
+    /* LOADING */
+    .loader{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem}
+    .loader-ring{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+    .loader-text{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* HEADER */
+    header{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 2rem;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200}
+    .logo{font-family:var(--font-display);font-size:1.7rem;font-weight:600;color:var(--gold)}
+    .logo span{color:var(--subtext);font-weight:300;font-style:italic}
+    .logo small{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);margin-left:.4rem;vertical-align:middle}
+    .hright{display:flex;align-items:center;gap:.6rem}
+    .hdate{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);letter-spacing:.08em}
+    .user-email{font-family:var(--font-mono);font-size:.65rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ibtn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--subtext);cursor:pointer;font-size:.85rem;padding:.28rem .8rem;transition:all .2s;font-family:var(--font-body)}
+    .ibtn:hover{border-color:var(--gold);color:var(--text)}
+    .ibtn.danger:hover{border-color:var(--red);color:var(--red)}
+
+    /* NAV */
+    nav{display:flex;padding:0 2rem;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+    .tbtn{background:none;border:none;color:var(--muted);font-family:var(--font-body);font-size:.82rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase;padding:.8rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap}
+    .tbtn:hover{color:var(--text)}.tbtn.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* LAYOUT */
+    .tab{display:none;padding:1.75rem 2rem;max-width:960px;margin:0 auto}.tab.active{display:block}
+    .stitle{font-family:var(--font-display);font-size:1.9rem;font-weight:300;margin-bottom:.2rem}
+    .ssub{font-size:.75rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:1.75rem}
+
+    /* FORM BLOCKS */
+    .fb{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem}
+    .fbt{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:1.1rem;display:flex;align-items:center;gap:.5rem}
+    .fbt::after{content:'';flex:1;height:1px;background:var(--border)}
+    .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.9rem;margin-bottom:.9rem}
+    .fr:last-child{margin-bottom:0}.fg{display:flex;flex-direction:column;gap:.35rem}.fg.full{grid-column:1/-1}
+    .lr{display:flex;align-items:center;gap:.35rem}
+    label{font-size:.75rem;font-weight:500;color:var(--subtext);letter-spacing:.04em;text-transform:uppercase}
+    .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--border);color:var(--muted);font-size:.6rem;font-weight:700;cursor:help;flex-shrink:0;font-family:var(--font-mono)}
+    .tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--tip-bg);color:var(--tip-text);font-family:var(--font-body);font-size:.76rem;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;padding:.55rem .85rem;border-radius:6px;width:230px;white-space:normal;opacity:0;pointer-events:none;transition:opacity .2s;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+    .tip:hover::after{opacity:1}
+    input[type=text],input[type=number],input[type=date],select,textarea{background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--font-body);font-size:.95rem;padding:.58rem .8rem;outline:none;transition:border-color .2s;width:100%}
+    input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+    select option{background:var(--card)}textarea{resize:vertical;min-height:68px;line-height:1.5}
+    .cg{display:flex;flex-wrap:wrap;gap:.45rem}
+    .cb{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--subtext);cursor:pointer;font-size:.86rem;padding:.38rem .9rem;transition:all .18s;user-select:none}
+    .cb:hover{border-color:var(--gold-dim);color:var(--text)}
+    .cb.sel{background:var(--gold);border-color:var(--gold);color:#07090f;font-weight:500}
+    .cb.sel-g{background:var(--green);border-color:var(--green);color:#fff;font-weight:500}
+    .cb.sel-r{background:var(--red);border-color:var(--red);color:#fff;font-weight:500}
+    .mlabels{display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);margin-top:.2rem}
+    input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--gold);cursor:pointer}
+
+    /* SCORE */
+    .score-card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:.9rem;transition:border-color .3s}
+    .score-card.grade-a{border-color:var(--green)}.score-card.grade-b{border-color:var(--amber)}.score-card.grade-c{border-color:var(--red)}
+    .score-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+    .score-title{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    .score-badge{font-family:var(--font-mono);font-size:1.6rem;font-weight:500;line-height:1}
+    .score-badge.grade-a{color:var(--green)}.score-badge.grade-b{color:var(--amber)}.score-badge.grade-c{color:var(--red)}
+    .score-grade{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:.2rem .6rem;border-radius:3px;margin-left:.5rem}
+    .score-grade.grade-a{background:rgba(34,197,94,.15);color:var(--green)}.score-grade.grade-b{background:rgba(245,158,11,.15);color:var(--amber)}.score-grade.grade-c{background:rgba(244,63,94,.15);color:var(--red)}
+    .score-bars{display:flex;flex-direction:column;gap:.4rem}
+    .score-row{display:flex;align-items:center;gap:.6rem;font-size:.8rem}
+    .score-row-label{color:var(--subtext);flex:1;font-size:.78rem}
+    .score-row-pts{font-family:var(--font-mono);font-size:.75rem;width:28px;text-align:right}
+    .score-bar-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+    .score-bar-fill{height:100%;border-radius:3px;transition:width .4s;background:var(--gold)}
+    .score-bar-fill.ok{background:var(--green)}.score-bar-fill.warn{background:var(--red)}
+    .warnings{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.9rem}
+    .warn-item{display:flex;align-items:flex-start;gap:.6rem;background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.25);border-radius:6px;padding:.65rem .9rem;font-size:.83rem;color:var(--text)}
+    .warn-item.info{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25)}
+
+    /* DECISION */
+    .dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.5rem}
+    .dcard{background:var(--surface);border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:.9rem;text-align:center;transition:all .2s}
+    .dcard:hover{border-color:var(--gold-dim)}
+    .dcard.dp{border-color:var(--green);background:rgba(34,197,94,.08)}.dcard.de{border-color:var(--gold);background:rgba(232,184,75,.08)}.dcard.dc{border-color:var(--red);background:rgba(244,63,94,.08)}
+    .dicon{font-size:1.3rem;margin-bottom:.25rem}.dlabel{font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--subtext)}
+
+    /* BUTTONS */
+    .btn-p{background:var(--gold);border:none;border-radius:6px;color:#07090f;cursor:pointer;font-family:var(--font-body);font-size:.82rem;font-weight:600;letter-spacing:.07em;padding:.7rem 1.8rem;text-transform:uppercase;transition:all .2s;margin-top:1.25rem}
+    .btn-p:hover{filter:brightness(1.1);transform:translateY(-1px)}.btn-p:disabled{opacity:.5;cursor:not-allowed}
+    .btn-s{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--subtext);cursor:pointer;font-family:var(--font-body);font-size:.82rem;padding:.7rem 1.3rem;text-transform:uppercase;transition:all .2s;margin-top:1.25rem;margin-left:.5rem}
+    .btn-s:hover{border-color:var(--gold-dim);color:var(--text)}
+    .btn-o{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--subtext);cursor:pointer;font-family:var(--font-mono);font-size:.68rem;padding:.4rem .9rem;letter-spacing:.06em;text-transform:uppercase;transition:all .2s}
+    .btn-o:hover{border-color:var(--cyan);color:var(--cyan)}
+    .btn-edit{background:none;border:none;color:var(--cyan);cursor:pointer;font-size:.78rem;padding:.18rem .4rem;border-radius:3px;transition:all .15s;font-family:var(--font-mono)}
+    .btn-edit:hover{background:rgba(56,189,248,.12)}
+    .btn-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:.18rem .38rem;border-radius:3px;transition:all .15s}
+    .btn-del:hover{background:rgba(244,63,94,.15);color:var(--red)}
+    .lbadge{display:inline-flex;align-items:center;gap:.25rem;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);border-radius:4px;color:var(--cyan);font-size:.68rem;padding:.12rem .45rem;font-family:var(--font-mono)}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:2rem;right:2rem;background:var(--green);color:#07090f;font-size:.82rem;font-weight:600;padding:.7rem 1.4rem;border-radius:6px;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;z-index:999}
+    .toast.show{opacity:1;transform:translateY(0)}
+
+    /* SYNC INDICATOR */
+    .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:.3rem}
+    .sync-dot.syncing{background:var(--amber);animation:pulse .8s ease-in-out infinite}
+    .sync-dot.error{background:var(--red)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* DASHBOARD */
+    .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1.25rem}
+    @media(max-width:680px){.mgrid{grid-template-columns:repeat(2,1fr)}}
+    .mc{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.3rem;position:relative;overflow:hidden}
+    .mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold)}
+    .mc.g::before{background:var(--green)}.mc.c::before{background:var(--cyan)}.mc.r::before{background:var(--red)}.mc.a::before{background:var(--amber)}
+    .mlbl{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.35rem}
+    .mval{font-family:var(--font-mono);font-size:1.85rem;font-weight:500;color:var(--text);line-height:1}
+    .msub{font-size:.68rem;color:var(--muted);margin-top:.3rem}
+    .sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem;margin-bottom:1.25rem}
+    .sc{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.3rem}
+    .sct{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.85rem}
+    .sr{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+    .sr:last-child{border-bottom:none}.srl{color:var(--subtext)}.srv{font-family:var(--font-mono);color:var(--gold)}
+    .dact{display:flex;gap:.5rem;margin-bottom:1.1rem;flex-wrap:wrap}
+
+    /* TABLE */
+    .twrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    th{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:.55rem .8rem;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+    td{padding:.58rem .8rem;border-bottom:1px solid rgba(30,45,61,.4);color:var(--subtext);white-space:nowrap}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .badge{border-radius:3px;font-size:.68rem;font-weight:600;letter-spacing:.05em;padding:.12rem .45rem;text-transform:uppercase}
+    .bw{background:rgba(34,197,94,.15);color:var(--green)}.bl{background:rgba(244,63,94,.15);color:var(--red)}.bb{background:rgba(232,184,75,.12);color:var(--gold)}
+    .rp{color:var(--green);font-family:var(--font-mono)}.rn{color:var(--red);font-family:var(--font-mono)}.rz{color:var(--gold);font-family:var(--font-mono)}
+    .empty{text-align:center;padding:2.5rem;color:var(--muted);font-family:var(--font-display);font-size:1.05rem;font-style:italic}
+    .gbadge{border-radius:3px;font-size:.65rem;font-weight:700;padding:.1rem .4rem;text-transform:uppercase;font-family:var(--font-mono)}
+    .gbadge.ga{background:rgba(34,197,94,.15);color:var(--green)}.gbadge.gb{background:rgba(245,158,11,.15);color:var(--amber)}.gbadge.gc{background:rgba(244,63,94,.15);color:var(--red)}
+
+    /* SETTINGS PANEL */
+    .sov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;opacity:0;pointer-events:none;transition:opacity .25s}
+    .sov.open{opacity:1;pointer-events:all}
+    .sp{position:fixed;top:0;right:-360px;width:340px;height:100vh;background:var(--surface);border-left:1px solid var(--border);padding:1.75rem 1.6rem;overflow-y:auto;z-index:500;transition:right .3s cubic-bezier(.4,0,.2,1)}
+    .sp.open{right:0}.stl2{font-family:var(--font-display);font-size:1.45rem;margin-bottom:1.5rem}
+    .ssl{margin-bottom:1.5rem}.sslbl{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.8rem}
+    .srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem;font-size:.87rem;color:var(--subtext)}
+    .sclose{position:absolute;top:1.4rem;right:1.4rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem}
+
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;opacity:0;pointer-events:none;transition:opacity .25s;display:flex;align-items:center;justify-content:center}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.75rem;width:min(90vw,600px);max-height:80vh;overflow-y:auto;position:relative}
+    .modal-title{font-family:var(--font-display);font-size:1.4rem;margin-bottom:1.25rem}
+    .modal-close{position:absolute;top:1.2rem;right:1.2rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem}
+      .inputlike{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:.7rem .8rem;color:var(--text);min-height:44px}
+    .row-selected{background:rgba(232,184,75,.08)}
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="display:block">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">FX Sensei <span>/ diário</span></div>
+      <div class="auth-sub">A tua conta pessoal de trading</div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="showAuthTab('login',this)">Entrar</button>
+        <button class="auth-tab" onclick="showAuthTab('register',this)">Criar conta</button>
+      </div>
+      <!-- LOGIN -->
+      <div id="auth-login">
+        <div class="auth-field"><label>Email</label><input type="email" id="l-email" placeholder="o teu email" autocomplete="email"></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="l-pass" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="auth-err" id="l-err"></div>
+        <button class="auth-btn" onclick="doLogin()" id="l-btn">Entrar</button>
+        <button class="btn-s" type="button" onclick="runDiagnostics()" style="width:100%;margin-left:0">Debug</button>
+      </div>
+      <!-- REGISTER -->
+      <div id="auth-register" style="display:none">
+        <div class="auth-field"><label>Email</label><input type="email" id="r-email" placeholder="o teu email" autocomplete="email"></div>
+        <div class="auth-field"><label>Password</label><input type="password" id="r-pass" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+        <div class="auth-err" id="r-err"></div>
+        <div class="auth-msg" id="r-msg"></div>
+        <button class="auth-btn" onclick="doRegister()" id="r-btn">Criar conta</button>
+      </div>
+      <div id="debug-box" style="display:none;margin-top:1rem;padding:.8rem 1rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--font-mono);font-size:.72rem;white-space:pre-wrap;color:var(--subtext)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADER -->
+<div id="loader" class="loader" style="display:none">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loader-text">Loading...</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <header>
+    <div class="logo">FX Sensei <span>/ diário</span><small>v4 · cloud</small></div>
+    <div class="hright">
+      <span class="sync-dot" id="sync-dot"></span>
+      <div class="hdate" id="hdate"></div>
+      <div class="user-email" id="user-email"></div>
+      <button class="ibtn" id="themeBtn" onclick="toggleTheme()">☀️</button>
+      <button class="ibtn" onclick="openSettings()">⚙️</button>
+      <button class="ibtn danger" id="logoutBtn" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+  <nav>
+    <button class="tbtn active" id="nav-pretrade" onclick="switchTab('pretrade',this)">Pre-Trade</button>
+    <button class="tbtn" id="nav-postrade" onclick="switchTab('postrade',this)">Post-Trade</button>
+    <button class="tbtn" id="nav-history" onclick="switchTab('history',this)">Pre-Trade History</button>
+    <button class="tbtn" id="nav-dashboard" onclick="switchTab('dashboard',this)">Dashboard</button>
+    <button class="tbtn" id="nav-guide" onclick="switchTab('guia',this)">Guide</button>
+  </nav>
+
+  <!-- PRÉ-TRADE -->
+  <div class="tab active" id="tab-pretrade">
+    <div class="stitle">Análise Pré-Trade</div>
+    <div class="ssub">Preenche antes de qualquer entrada — método Juliano</div>
+    <div class="fb">
+      <div class="fbt">01 — Dados base</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Data</label></div><input type="date" id="pt-data"></div>
+        <div class="fg"><div class="lr"><label>Ativo</label><span class="tip" data-tip="Par de moedas ou instrumento. Ex: EURUSD, GBPUSD, XAUUSD.">?</span></div><input type="text" id="pt-ativo" placeholder="ex: EURUSD" oninput="calcScore()"></div>
+        <div class="fg"><div class="lr"><label>Sessão</label></div>
+          <select id="pt-sessao"><option value="">—</option><option>Londres</option><option>New York</option><option>Overlap</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Setup Tag</label><span class="tip" data-tip="Etiqueta para categorizar. Ex: OB_Reteste, CHoCH_Inversion. Para filtrar estatísticas.">?</span></div><input type="text" id="pt-tag" placeholder="ex: OB_Reteste"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>TF Macro</label><span class="tip" data-tip="Timeframe de contexto — onde lês a estrutura geral.">?</span></div>
+          <select id="pt-tfmacro"><option value="">—</option><option>W</option><option>D</option><option>H4</option><option>H1</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>TF Micro</label><span class="tip" data-tip="Timeframe de execução — onde procuras o gatilho.">?</span></div>
+          <select id="pt-tfmicro"><option value="">—</option><option>H1</option><option>M30</option><option>M15</option><option>M5</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>RR Esperado</label><span class="tip" data-tip="Risk/Reward esperado. Ex: 2 = esperas ganhar 2x o que arriscas.">?</span></div><input type="number" id="pt-rr" placeholder="ex: 2.5" step="0.5" min="0.5"></div>
+        <div class="fg"><div class="lr"><label>Direção</label><span class="tip" data-tip="Direção com base na estrutura macro. Sem decisão = não entres.">?</span></div>
+          <div class="cg" id="pt-dir" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-dir','sel-g');calcScore()">Compra</span>
+            <span class="cb" onclick="ss(this,'pt-dir','sel-r');calcScore()">Venda</span>
+            <span class="cb" onclick="ss(this,'pt-dir','sel');calcScore()">Indefinida</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fb">
+      <div class="fbt">02 — Contexto Macro</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Estrutura</label><span class="tip" data-tip="Bullish = topos/fundos crescentes. Bearish = decrescentes. Ranging = sem tendência.">?</span></div>
+          <select id="pt-estrutura" onchange="calcScore()"><option value="">—</option><option>Bullish</option><option>Bearish</option><option>Ranging</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Último sinal</label><span class="tip" data-tip="BoS confirma tendência. CHoCH sinaliza possível inversão.">?</span></div>
+          <select id="pt-sinal"><option value="">—</option><option>BoS Bullish</option><option>BoS Bearish</option><option>CHoCH Bullish</option><option>CHoCH Bearish</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Posição Fibo</label><span class="tip" data-tip="Premium = acima dos 50% (zona de venda). Discount = abaixo dos 50% (zona de compra).">?</span></div>
+          <div class="cg" id="pt-fibo" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-fibo','sel');calcScore()">Premium</span>
+            <span class="cb" onclick="ss(this,'pt-fibo','sel');calcScore()">Discount</span>
+            <span class="cb" onclick="ss(this,'pt-fibo','sel');calcScore()">50%</span>
+          </div>
+        </div>
+      </div>
+      <div class="fr"><div class="fg full"><div class="lr"><label>Notas de contexto</label></div><textarea id="pt-contexto" placeholder="O que o mercado está a dizer..."></textarea></div></div>
+    </div>
+    <div class="fb">
+      <div class="fbt">03 — Liquidez</div>
+      <div class="fr">
+        <div class="fg full"><div class="lr"><label>Níveis marcados</label><span class="tip" data-tip="Seleciona todos os níveis de liquidez identificados no gráfico.">?</span></div>
+          <div class="cg" id="pt-liq">
+            <span class="cb" onclick="ms(this)">PDH</span><span class="cb" onclick="ms(this)">PDL</span>
+            <span class="cb" onclick="ms(this)">PWH</span><span class="cb" onclick="ms(this)">PWL</span>
+            <span class="cb" onclick="ms(this)">PMH</span><span class="cb" onclick="ms(this)">PML</span>
+            <span class="cb" onclick="ms(this)">Equal Highs</span><span class="cb" onclick="ms(this)">Equal Lows</span>
+            <span class="cb" onclick="ms(this)">Trendline Retail</span>
+          </div>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Liquidez capturada?</label><span class="tip" data-tip="O preço foi buscar liquidez antes de chegar à zona? Aumenta probabilidade de reação.">?</span></div>
+          <div class="cg" id="pt-liqcap" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-liqcap','sel-g');calcScore()">Sim ✓</span>
+            <span class="cb" onclick="ss(this,'pt-liqcap','sel-r');calcScore()">Não</span>
+          </div>
+        </div>
+        <div class="fg"><div class="lr"><label>Possibilidade de indução?</label><span class="tip" data-tip="Há zona de liquidez visível que pode atrair traders de varejo antes do movimento real?">?</span></div>
+          <div class="cg" id="pt-inducao" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-inducao','sel')">Sim</span>
+            <span class="cb" onclick="ss(this,'pt-inducao','sel')">Não</span>
+            <span class="cb" onclick="ss(this,'pt-inducao','sel')">Incerto</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fb">
+      <div class="fbt">04 — Volume</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Quebra com volume forte?</label><span class="tip" data-tip="O impulso que criou a zona teve volume acima da média? Valida o movimento institucional.">?</span></div>
+          <div class="cg" id="pt-volq" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-volq','sel-g');calcScore()">Sim ✓</span>
+            <span class="cb" onclick="ss(this,'pt-volq','sel-r');calcScore()">Não</span>
+            <span class="cb" onclick="ss(this,'pt-volq','sel');calcScore()">N/D</span>
+          </div>
+        </div>
+        <div class="fg"><div class="lr"><label>Correção com volume fraco?</label><span class="tip" data-tip="A correção de volta à zona está com volume baixo? Confirma que o impulso vai continuar.">?</span></div>
+          <div class="cg" id="pt-volc" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-volc','sel-g');calcScore()">Sim ✓</span>
+            <span class="cb" onclick="ss(this,'pt-volc','sel-r');calcScore()">Não</span>
+            <span class="cb" onclick="ss(this,'pt-volc','sel');calcScore()">N/D</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fb">
+      <div class="fbt">05 — Zona de Interesse</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Tipo de zona</label><span class="tip" data-tip="OB: última vela antes de impulso. Imbalance: FVG. Break Block: OB violado. POC: maior volume na range.">?</span></div>
+          <select id="pt-tipozona" onchange="calcScore()"><option value="">—</option><option>Order Block</option><option>Imbalance</option><option>Break Block</option><option>POC</option><option>Outra</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Zona alinhada?</label><span class="tip" data-tip="Zona de compra em bullish/Discount. Zona de venda em bearish/Premium. Se não = risco alto.">?</span></div>
+          <div class="cg" id="pt-zonaok" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-zonaok','sel-g');calcScore()">Sim ✓</span>
+            <span class="cb" onclick="ss(this,'pt-zonaok','sel-r');calcScore()">Não</span>
+          </div>
+        </div>
+      </div>
+      <div class="fr"><div class="fg full"><div class="lr"><label>Confluências presentes</label><span class="tip" data-tip="Mínimo 2-3 para zona forte. Seleciona tudo o que encontras.">?</span></div>
+        <div class="cg" id="pt-conf">
+          <span class="cb" onclick="ms(this);calcScore()">Order Block</span><span class="cb" onclick="ms(this);calcScore()">Imbalance</span>
+          <span class="cb" onclick="ms(this);calcScore()">POC</span><span class="cb" onclick="ms(this);calcScore()">Breaker</span>
+          <span class="cb" onclick="ms(this);calcScore()">0.78 Fibo</span><span class="cb" onclick="ms(this);calcScore()">50% Fibo</span>
+          <span class="cb" onclick="ms(this);calcScore()">Liquidez</span><span class="cb" onclick="ms(this);calcScore()">PDH/PDL</span>
+          <span class="cb" onclick="ms(this);calcScore()">PWH/PWL</span><span class="cb" onclick="ms(this);calcScore()">PMH/PML</span>
+          <span class="cb" onclick="ms(this);calcScore()">CHoCH micro</span><span class="cb" onclick="ms(this);calcScore()">BoS micro</span>
+          <span class="cb" onclick="ms(this);calcScore()">Volume</span><span class="cb" onclick="ms(this);calcScore()">Reteste zona manipulada</span>
+          <span class="cb" onclick="ms(this);calcScore()">Indução / trendline retail</span><span class="cb" onclick="ms(this);calcScore()">Range POC</span>
+        </div>
+      </div></div>
+    </div>
+    <div class="fb">
+      <div class="fbt">06 — Chegada e Gatilho</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Forma de chegada</label><span class="tip" data-tip="Corretiva (ziguezague) = ideal. Impulsiva (linha reta) = perigosa.">?</span></div>
+          <div class="cg" id="pt-chegada" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-chegada','sel-g');calcScore()">Corretiva ✓</span>
+            <span class="cb" onclick="ss(this,'pt-chegada','sel-r');calcScore()">Impulsiva ✗</span>
+          </div>
+        </div>
+        <div class="fg"><div class="lr"><label>Tipo de entrada</label><span class="tip" data-tip="Baixo Risco: esperas CHoCH/BoS no micro. Alto Risco: entras diretamente.">?</span></div>
+          <div class="cg" id="pt-tipoent" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-tipoent','sel-g');calcScore()">Baixo Risco</span>
+            <span class="cb" onclick="ss(this,'pt-tipoent','sel-r');calcScore()">Alto Risco</span>
+          </div>
+        </div>
+      </div>
+      <div class="fr"><div class="fg full"><div class="lr"><label>O que preciso de ver?</label><span class="tip" data-tip="Gatilho específico. Ex: 'CHoCH bullish no M15 dentro do OB'.">?</span></div>
+        <textarea id="pt-gatilho" placeholder="CHoCH no micro, BoS micro, correção da microestrutura..."></textarea>
+      </div></div>
+    </div>
+    <div class="fb">
+      <div class="fbt">07 — Stop e Estado Mental</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Stop técnico</label><span class="tip" data-tip="Nível que invalida completamente a ideia. Não é um número — é um nível do mercado.">?</span></div>
+          <input type="text" id="pt-stop" placeholder="ex: abaixo do OB, abaixo do fundo">
+        </div>
+        <div class="fg"><div class="lr"><label>Stop invalida a ideia?</label><span class="tip" data-tip="Se for atingido, o trade deixa de fazer sentido? Se Não, o stop não está bem colocado.">?</span></div>
+          <div class="cg" id="pt-stopok" style="margin-top:.2rem">
+            <span class="cb" onclick="ss(this,'pt-stopok','sel-g');calcScore()">Sim ✓</span>
+            <span class="cb" onclick="ss(this,'pt-stopok','sel-r');calcScore()">Não</span>
+          </div>
+        </div>
+      </div>
+      <div class="fr"><div class="fg full">
+        <div class="lr"><label>Estado mental — <span id="mental-val" style="color:var(--gold);font-family:var(--font-mono)">3</span>/5</label><span class="tip" data-tip="1-2: não entres. 3: atenção redobrada. 4-5: ideal.">?</span></div>
+        <input type="range" min="1" max="5" value="3" id="pt-mental" oninput="$('mental-val').textContent=this.value;calcScore()">
+        <div class="mlabels"><span>Confuso / ansioso</span><span>Neutro</span><span>Calmo / claro</span></div>
+      </div></div>
+    </div>
+    <div class="score-card" id="score-card">
+      <div class="score-header">
+        <div class="score-title">Score de qualidade do setup</div>
+        <div><span class="score-badge" id="sc-pts">0</span><span style="font-family:var(--font-mono);font-size:.9rem;color:var(--muted)">/12</span><span class="score-grade" id="sc-grade">—</span></div>
+      </div>
+      <div class="score-bars" id="sc-bars"></div>
+    </div>
+    <div id="warnings-zone"></div>
+    <div class="fb">
+      <div class="fbt">08 — Decisão Final</div>
+      <div class="dcards" id="pt-dec">
+        <div class="dcard" onclick="selDec('p')"><div class="dicon">🟢</div><div class="dlabel">Procurar entrada</div></div>
+        <div class="dcard" onclick="selDec('e')"><div class="dicon">🟡</div><div class="dlabel">Esperar confirmação</div></div>
+        <div class="dcard" onclick="selDec('c')"><div class="dicon">🔴</div><div class="dlabel">Cancel ideia</div></div>
+      </div>
+      <div class="fr" style="margin-top:.9rem"><div class="fg full">
+        <div class="lr"><label>Justificação final</label><span class="tip" data-tip="Se não consegues explicar em 30 segundos com clareza, ainda não estás pronto.">?</span></div>
+        <textarea id="pt-just" placeholder="Se não consegues explicar em 30 segundos, ainda não estás pronto." style="min-height:80px"></textarea>
+      </div></div>
+    </div>
+    <button class="btn-p" onclick="savePT()" id="pt-save-btn">Guardar Análise</button>
+    <button class="btn-s" onclick="clearPT()">Limpar</button>
+  </div>
+
+  <!-- PÓS-TRADE -->
+  <div class="tab" id="tab-postrade">
+    <div class="stitle">Registo Pós-Trade</div>
+    <div class="ssub">Preenche após fechar a operação</div>
+    <div class="fb">
+      <div class="fbt">01 — Dados da operação</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Data</label></div><input type="date" id="po-data"></div>
+        <div class="fg"><div class="lr"><label>Ativo</label></div><input type="text" id="po-ativo" placeholder="EURUSD"></div>
+        <div class="fg"><div class="lr"><label>Direção</label></div>
+          <select id="po-dir"><option value="">—</option><option>Compra</option><option>Venda</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Setup Tag</label></div><input type="text" id="po-tag" placeholder="ex: OB_Reteste"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Resultado</label></div>
+          <select id="po-result"><option value="">—</option><option>Win</option><option>Loss</option><option>Breakeven</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Resultado em R</label><span class="tip" data-tip="Múltiplo do risco. 50€ arriscados, 150€ ganhos = +3R.">?</span></div>
+          <input type="number" id="po-r" placeholder="ex: 2.5 ou -1" step="0.1">
+        </div>
+        <div class="fg"><div class="lr"><label>RR Realizado</label></div><input type="number" id="po-rr" placeholder="ex: 1.8" step="0.1"></div>
+      </div>
+    </div>
+    <div class="fb">
+      <div class="fbt">02 — Ligar à análise pré-trade</div>
+      <div class="fr"><div class="fg full"><div class="lr"><label>Análise pré-trade correspondente</label><span class="tip" data-tip="Liga este trade à análise pré-trade. Permite ver no dashboard se seguiste o teu plano.">?</span></div>
+        <select id="po-ptlink"><option value="">— Nenhuma —</option></select>
+      </div></div>
+    </div>
+    <div class="fb">
+      <div class="fbt">03 — Classificação</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Tipo de Entrada</label></div>
+          <select id="po-tipoent"><option value="">—</option><option>Alto Risco</option><option>Baixo Risco</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Tipo de Zona</label></div>
+          <select id="po-tipozona"><option value="">—</option><option>Order Block</option><option>Imbalance</option><option>Break Block</option><option>POC</option><option>Outra</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Tipo de Gatilho</label></div>
+          <select id="po-gatilho"><option value="">—</option><option>CHoCH</option><option>BoS micro</option><option>Entrada direta (alto risco)</option><option>Outro</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Estrutura Macro</label></div>
+          <select id="po-estrutura"><option value="">—</option><option>Bullish</option><option>Bearish</option><option>Ranging</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Premium / Discount</label></div>
+          <select id="po-pd"><option value="">—</option><option>Premium</option><option>Discount</option><option>50%</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Liquidez Capturada?</label></div>
+          <select id="po-liq"><option value="">—</option><option>Sim</option><option>Não</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Sessão</label></div>
+          <select id="po-sessao"><option value="">—</option><option>Londres</option><option>New York</option><option>Overlap</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="fb">
+      <div class="fbt">04 — Qualidade e Emoção</div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Chegada à Zona</label></div>
+          <select id="po-chegada"><option value="">—</option><option>Corretiva (ideal)</option><option>Impulsiva</option><option>Mista</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Qualidade da Execução</label></div>
+          <select id="po-qual"><option value="">—</option><option>Excelente</option><option>Boa</option><option>Razoável</option><option>Má</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Emoção Principal</label></div>
+          <select id="po-emocao"><option value="">—</option><option>Calmo</option><option>Ansioso</option><option>Confiante</option><option>Com medo</option><option>Impulsivo</option><option>Neutro</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><div class="lr"><label>Stop Respeitado?</label></div>
+          <select id="po-stopok"><option value="">—</option><option>Sim</option><option>Não</option></select>
+        </div>
+        <div class="fg"><div class="lr"><label>Seguiu o Plano?</label></div>
+          <select id="po-plano"><option value="">—</option><option>Sim</option><option>Não</option><option>Parcialmente</option></select>
+        </div>
+      </div>
+      <div class="fr"><div class="fg full"><div class="lr"><label>Notas curtas</label></div>
+        <textarea id="po-notas" placeholder="O que aprendeste? O que farias diferente?"></textarea>
+      </div></div>
+    </div>
+    <button class="btn-p" onclick="savePO()" id="po-save-btn">Guardar Trade</button>
+    <button class="btn-s" onclick="clearPO()">Limpar</button>
+  </div>
+
+
+  <!-- PRE-TRADE HISTORY -->
+  <div class="tab" id="tab-history">
+    <div class="stitle" id="history-title">Pre-Trade History</div>
+    <div class="ssub" id="history-subtitle">Browse, review, edit and link saved analyses</div>
+    <div class="fb">
+      <div class="fr" style="align-items:end">
+        <div class="fg" style="flex:2">
+          <div class="lr"><label id="history-search-label">Search by asset / tag / date</label></div>
+          <input type="text" id="pt-history-search" placeholder="Ex: EURUSD, London, 2026-03-12" oninput="renderPretradeHistory()">
+        </div>
+        <div class="fg">
+          <div class="lr"><label id="history-total-label">Saved analyses</label></div>
+          <div class="score-badge grade-b" id="pt-history-count">0</div>
+        </div>
+      </div>
+      <div class="twrap" style="margin-top:1rem">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th id="pth-col-date">Date</th><th id="pth-col-asset">Asset</th><th id="pth-col-direction">Direction</th>
+              <th id="pth-col-score">Score</th><th id="pth-col-session">Session</th><th id="pth-col-tag">Tag</th><th id="pth-col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pt-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="fb" id="pt-history-detail" style="margin-top:1rem">
+      <div class="fbt" id="history-detail-title">Analysis detail</div>
+      <div id="pt-history-detail-body" class="empty">Select an analysis to review its full structure.</div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="tab" id="tab-dashboard">
+    <div class="stitle">Dashboard</div>
+    <div class="ssub">Performance acumulada · sincronizado com a cloud</div>
+    <div class="dact">
+      <button class="btn-o" onclick="exportCSV('trades')">⬇ Trades CSV</button>
+      <button class="btn-o" onclick="exportCSV('pretrades')">⬇ Pre-Trades CSV</button>
+    </div>
+    <div class="mgrid" id="mgrid"></div>
+    <div class="sgrid" id="sgrid"></div>
+    <div class="fb">
+      <div class="fbt">Histórico de trades</div>
+      <div class="twrap">
+        <table>
+          <thead><tr><th>#</th><th>Data</th><th>Ativo</th><th>Dir</th><th>Res</th><th>R</th><th>Score</th><th>Entrada</th><th>Zona</th><th>Sessão</th><th>Emoção</th><th>Plano?</th><th>Pré</th><th></th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- GUIA -->
+  <div class="tab" id="tab-guia">
+    <div class="stitle">Guia de Utilização</div>
+    <div class="ssub">Como usar o diário — método Juliano v4</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.9rem">Versão Cloud</div>
+      <p style="font-size:.9rem;color:var(--subtext);line-height:1.7">Os teus dados estão guardados na cloud (Supabase). Podes aceder a partir de qualquer dispositivo com a tua conta. Os dados ficam associados ao teu email — nunca se perdem se limpares o browser.</p>
+    </div>
+    <div style="background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:.88rem;color:var(--text);font-style:italic">"Se não consegues explicar este trade a outra pessoa em 30 segundos com clareza, ainda não estás pronto para o executar." — Juliano</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Score de Qualidade</div>
+      <p style="font-size:.86rem;color:var(--subtext);line-height:1.6;margin-bottom:.75rem">Calculado automaticamente enquanto preenches o pré-trade.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Estrutura alinhada com direção</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Premium/Discount correto</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Zona alinhada com estrutura</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Chegada corretiva</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Entrada de Baixo Risco</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Stop invalida a ideia</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+1</td></tr>
+        <tr><td style="padding:.35rem .5rem;color:var(--subtext)">Estado mental ≥ 4</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+1</td></tr>
+      </table>
+      <div style="display:flex;gap:.6rem;margin-top:.9rem;flex-wrap:wrap">
+        <span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">9–12 pts → Setup A</span>
+        <span style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">6–8 pts → Setup B</span>
+        <span style="background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">0–5 pts → Setup C</span>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Rotina recomendada</div>
+      <ol style="padding-left:1.1rem;color:var(--subtext);font-size:.9rem;line-height:1.75">
+        <li>Abre primeiro o separador Pre-Trade e preenche o contexto completo.</li>
+        <li>Confirma score, warnings e decisão antes de qualquer entrada.</li>
+        <li>Depois de fechares a operação, regista o Pós-Trade e liga-o ao pré-trade correspondente.</li>
+        <li>Consulta o History para rever análises e o Dashboard para padrões e estatísticas.</li>
+      </ol>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Debug rápido</div>
+      <ul style="padding-left:1.1rem;color:var(--subtext);font-size:.9rem;line-height:1.75">
+        <li>Se ficar em loading, abre a consola do browser e procura erros vermelhos.</li>
+        <li>Valida login, leitura de sessão e acesso às tabelas pretrades e trades.</li>
+        <li>Confirma que o schema Supabase foi executado sem erros e com RLS ativo.</li>
+        <li>Usa o botão Debug no login para correr diagnóstico básico local.</li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+
+// ── CONFIG / SUPABASE INIT ───────────────────────
+const APP_CONFIG = {
+  supabaseUrl: 'https://clxfszsrqrodxfaolztk.supabase.co',
+  supabaseAnonKey: 'sb_publishable_pItLxvN2lVoAxaM-ALYSoA_7pODvCT1',
+  defaultLanguage: 'en',
+  supportedLanguages: ['en','pt']
+};
+
+const { createClient } = supabase;
+const sb = createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey);
+
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().split('T')[0];
+const localeMap = { en:'en-GB', pt:'pt-PT' };
+let currentUser = null;
+let editId = null;
+let editPretradeId = null;
+let selectedPretradeId = null;
+let currentDec = '';
+let currentLang = localStorage.getItem('fxs_lang') || APP_CONFIG.defaultLanguage;
+let cachedPretrades = [];
+let cachedTrades = [];
+
+// ── SYNC DOT ──────────────────────────────────────
+function setSyncing(state){ // 'ok' | 'syncing' | 'error'
+  const d=$('sync-dot');if(!d)return;
+  d.className='sync-dot'+(state==='syncing'?' syncing':state==='error'?' error':'');
+}
+
+// ── AUTH ──────────────────────────────────────────
+function showAuthTab(tab, btn){
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('auth-login').style.display = tab==='login'?'block':'none';
+  $('auth-register').style.display = tab==='register'?'block':'none';
+}
+
+async function doLogin(){
+  const email=$('l-email').value.trim(), pass=$('l-pass').value;
+  if(!email||!pass){$('l-err').textContent=t('auth.loginMissing');return;}
+  $('l-btn').disabled=true;$('l-err').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  $('l-btn').disabled=false;
+  if(error)$('l-err').textContent=error.message;
+}
+
+async function doRegister(){
+  const email=$('r-email').value.trim(), pass=$('r-pass').value;
+  if(!email||!pass){$('r-err').textContent=t('auth.registerMissing');return;}
+  if(pass.length<6){$('r-err').textContent=t('auth.passwordShort');return;}
+  $('r-btn').disabled=true;$('r-err').textContent='';$('r-msg').textContent='';
+  const {error}=await sb.auth.signUp({email,password:pass});
+  $('r-btn').disabled=false;
+  if(error)$('r-err').textContent=error.message;
+  else $('r-msg').textContent=t('auth.registerSuccess');
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+}
+
+// ── AUTH STATE / BOOTSTRAP ─────────────────────────
+function showLoader(){
+  const loader=$('loader'), auth=$('auth-screen'), app=$('app');
+  if(loader) loader.style.display='flex';
+  if(auth) auth.style.display='none';
+  if(app) app.style.display='none';
+}
+function showAuth(message=''){
+  const loader=$('loader'), auth=$('auth-screen'), app=$('app');
+  if(loader) loader.style.display='none';
+  if(auth) auth.style.display='block';
+  if(app) app.style.display='none';
+  const err=$('l-err');
+  if(err && message) err.textContent=message;
+}
+function showApp(){
+  const loader=$('loader'), auth=$('auth-screen'), app=$('app');
+  if(loader) loader.style.display='none';
+  if(auth) auth.style.display='none';
+  if(app) app.style.display='block';
+}
+
+// onAuthStateChange only handles events AFTER initial load (e.g. logout, token refresh)
+// bootstrapApp() handles the initial session check to avoid double-init race condition
+sb.auth.onAuthStateChange(async (_event, session) => {
+  if(_event === 'SIGNED_OUT'){
+    currentUser = null;
+    cachedPretrades = [];
+    cachedTrades = [];
+    showAuth();
+  } else if(_event === 'SIGNED_IN' && !currentUser){
+    // Handle sign-in from auth screen (after bootstrapApp found no session)
+    currentUser = session.user;
+    try{ await initApp(); }catch(e){ showAuth('Erro ao iniciar: '+e.message); }
+  }
+});
+
+async function bootstrapApp(){
+  try{
+    showLoader();
+    const { data, error } = await sb.auth.getSession();
+    if(error) throw error;
+    if(data?.session?.user){
+      currentUser = data.session.user;
+      await initApp();
+    }else{
+      showAuth();
+    }
+  }catch(e){
+    console.error('Bootstrap error:', e);
+    showAuth('Erro ao iniciar a aplicação. Valida a configuração Supabase na consola.');
+  }
+}
+
+async function initApp(){
+  try{
+    showLoader();
+    await loadAll();
+    showApp();
+    setLanguage(currentLang); // safe to call now — data is loaded and DOM is visible
+    if($('hdate')) $('hdate').textContent=formatHeaderDate();
+    if($('user-email')) $('user-email').textContent=currentUser?.email || '';
+    if($('pt-data')) $('pt-data').value=today();
+    if($('po-data')) $('po-data').value=today();
+    applyTheme(localStorage.getItem('fxs_theme')||autoTheme());
+    const fs=localStorage.getItem('fxs_fs')||'16';
+    applyFS(fs);
+    if($('fsrange')) $('fsrange').value=fs;
+    calcScore();
+  }catch(e){
+    console.error('initApp error:', e);
+    showAuth('Erro ao iniciar a aplicação. Abre a consola e valida a configuração Supabase.');
+  }
+}
+
+async function loadAll(){
+  setSyncing('syncing');
+  try {
+    const [ptRes, trRes] = await Promise.all([
+      sb.from('pretrades').select('*').order('created_at',{ascending:false}),
+      sb.from('trades').select('*').order('created_at',{ascending:false})
+    ]);
+    if(ptRes.error)throw ptRes.error;
+    if(trRes.error)throw trRes.error;
+    cachedPretrades = ptRes.data||[];
+    cachedTrades = trRes.data||[];
+    fillPTLink();
+    renderPretradeHistory();
+    setSyncing('ok');
+  } catch(e){
+    setSyncing('error');
+    toast(t('toast.loadError')+e.message,'var(--red)');
+  }
+}
+
+// ── TABS ──────────────────────────────────────────
+function switchTab(n,btn){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(el=>el.classList.remove('active'));
+  $('tab-'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(n==='dashboard')renderDash();
+  if(n==='postrade')fillPTLink();
+  if(n==='history')renderPretradeHistory();
+}
+
+// ── CHOICE BUTTONS ────────────────────────────────
+function ss(el,gid,cls){
+  $(gid).querySelectorAll('.cb').forEach(b=>b.classList.remove('sel','sel-g','sel-r'));
+  el.classList.add(cls);
+}
+function ms(el){el.classList.toggle('sel');}
+function gs(gid){
+  const g=$(gid);if(!g)return'';
+  return[...g.querySelectorAll('.cb')].filter(b=>b.classList.contains('sel')||b.classList.contains('sel-g')||b.classList.contains('sel-r'))
+    .map(b=>b.textContent.replace('✓','').replace('✗','').trim()).join(', ');
+}
+function selDec(d){
+  currentDec=d;
+  document.querySelectorAll('.dcard').forEach(c=>c.classList.remove('dp','de','dc'));
+  const cards=document.querySelectorAll('.dcard');
+  if(d==='p')cards[0].classList.add('dp');
+  if(d==='e')cards[1].classList.add('de');
+  if(d==='c')cards[2].classList.add('dc');
+}
+
+// ── SCORE ─────────────────────────────────────────
+function calcScore(){
+  const dir=gs('pt-dir'),estrutura=$('pt-estrutura').value,fibo=gs('pt-fibo');
+  const zonaok=gs('pt-zonaok'),chegada=gs('pt-chegada'),tipoent=gs('pt-tipoent');
+  const stopok=gs('pt-stopok'),mental=parseInt($('pt-mental').value)||3;
+  let pts=0;const rows=[];
+
+  const estruturaOk=(dir==='Compra'&&estrutura==='Bullish')||(dir==='Venda'&&estrutura==='Bearish');
+  const ePts=(dir&&estrutura&&dir!=='Indefinida'&&estrutura!=='Ranging')?(estruturaOk?2:0):0;
+  pts+=ePts;rows.push({label:'Estrutura alinhada com direção',pts:ePts,max:2});
+
+  const pdOk=(dir==='Compra'&&(fibo==='Discount'||fibo==='50%'))||(dir==='Venda'&&(fibo==='Premium'||fibo==='50%'));
+  const pdPts=(dir&&fibo&&dir!=='Indefinida')?(pdOk?2:0):0;
+  pts+=pdPts;rows.push({label:'Premium/Discount correto',pts:pdPts,max:2});
+
+  const zPts=zonaok==='Sim'?2:0;pts+=zPts;rows.push({label:'Zona alinhada',pts:zPts,max:2});
+  const cPts=chegada==='Corretiva'?2:0;pts+=cPts;rows.push({label:'Chegada corretiva',pts:cPts,max:2});
+  const tPts=tipoent==='Baixo Risco'?2:0;pts+=tPts;rows.push({label:'Entrada de baixo risco',pts:tPts,max:2});
+  const stPts=stopok==='Sim'?1:0;pts+=stPts;rows.push({label:'Stop invalida a ideia',pts:stPts,max:1});
+  const mPts=mental>=4?1:0;pts+=mPts;rows.push({label:`Estado mental (${mental}/5)`,pts:mPts,max:1});
+
+  let grade,gc;
+  if(pts>=9){grade='Setup A';gc='grade-a';}else if(pts>=6){grade='Setup B';gc='grade-b';}else{grade='Fraco';gc='grade-c';}
+
+  const sc=$('score-card');sc.className='score-card '+gc;
+  $('sc-pts').textContent=pts;$('sc-pts').className='score-badge '+gc;
+  const gEl=$('sc-grade');gEl.textContent=grade;gEl.className='score-grade '+gc;
+  $('sc-bars').innerHTML=rows.map(r=>`<div class="score-row">
+    <span class="score-row-label">${r.label}</span>
+    <div class="score-bar-wrap"><div class="score-bar-fill ${r.pts===r.max?'ok':r.pts===0&&r.max>0?'warn':''}" style="width:${r.max>0?(r.pts/r.max)*100:0}%"></div></div>
+    <span class="score-row-pts" style="color:${r.pts===r.max?'var(--green)':r.pts===0?'var(--red)':'var(--amber)'}">${r.pts>0?'+':''}${r.pts}</span>
+  </div>`).join('');
+
+  // Warnings
+  const ws=[];
+  if(dir==='Compra'&&estrutura==='Bearish')ws.push({t:'err',m:'⚠️ Comprar em estrutura bearish contradiz o método.'});
+  if(dir==='Venda'&&estrutura==='Bullish')ws.push({t:'err',m:'⚠️ Vender em estrutura bullish contradiz o método.'});
+  if(dir==='Compra'&&fibo==='Premium')ws.push({t:'err',m:'⚠️ Comprar em zona Premium vai contra o método.'});
+  if(dir==='Venda'&&fibo==='Discount')ws.push({t:'err',m:'⚠️ Vender em zona Discount vai contra o método.'});
+  if(zonaok==='Não')ws.push({t:'err',m:'⚠️ Zona não alinhada com estrutura. Considera cancelar.'});
+  if(chegada==='Impulsiva')ws.push({t:'info',m:'🟡 Chegada impulsiva — risco de perfuração elevado. Considera esperar confirmação.'});
+  if(mental<=2)ws.push({t:'err',m:'⚠️ Estado mental baixo ('+mental+'/5). O método recomenda não entrar nestas condições.'});
+  else if(mental===3)ws.push({t:'info',m:'🟡 Estado mental neutro. Atenção redobrada.'});
+  if(estrutura==='Ranging'&&dir&&dir!=='Indefinida')ws.push({t:'info',m:'🟡 Mercado em ranging. Probabilidades reduzidas sem tendência definida.'});
+  $('warnings-zone').innerHTML=ws.length?`<div class="warnings">${ws.map(w=>`<div class="warn-item ${w.t==='info'?'info':''}">${w.m}</div>`).join('')}</div>`:'';
+}
+
+// ── PRÉ-TRADE SAVE ────────────────────────────────
+async function savePT(){
+  if(!$('pt-ativo').value.trim()){toast(t('toast.pretradeRequired'),'var(--red)');return;}
+  const btn=$('pt-save-btn');btn.disabled=true;setSyncing('syncing');
+  const score=parseInt($('sc-pts').textContent)||0;
+  const grade=$('sc-grade').textContent;
+  const record={
+    user_id:currentUser.id,data:$('pt-data').value||today(),ativo:$('pt-ativo').value.trim(),
+    tag:$('pt-tag').value||null,sessao:$('pt-sessao').value||null,
+    tfmacro:$('pt-tfmacro').value||null,tfmicro:$('pt-tfmicro').value||null,
+    rr:$('pt-rr').value||null,direcao:gs('pt-dir')||null,estrutura:$('pt-estrutura').value||null,
+    sinal:$('pt-sinal').value||null,fibo:gs('pt-fibo')||null,contexto:$('pt-contexto').value||null,
+    liquidez:gs('pt-liq')||null,liqcap:gs('pt-liqcap')||null,inducao:gs('pt-inducao')||null,
+    volq:gs('pt-volq')||null,volc:gs('pt-volc')||null,tipozona:$('pt-tipozona').value||null,
+    zonaok:gs('pt-zonaok')||null,conf:gs('pt-conf')||null,chegada:gs('pt-chegada')||null,
+    tipoent:gs('pt-tipoent')||null,gatilho:$('pt-gatilho').value||null,
+    stop:$('pt-stop').value||null,stopok:gs('pt-stopok')||null,
+    mental:$('pt-mental').value,decisao:currentDec||null,
+    just:$('pt-just').value||null,score,grade
+  };
+  let data,error;
+  if(editPretradeId){
+    ({data,error}=await sb.from('pretrades').update(record).eq('id',editPretradeId).eq('user_id',currentUser.id).select().single());
+  }else{
+    ({data,error}=await sb.from('pretrades').insert(record).select().single());
+  }
+  btn.disabled=false;
+  if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
+  const idx=cachedPretrades.findIndex(p=>p.id===data.id);
+  if(idx>=0)cachedPretrades[idx]=data; else cachedPretrades.unshift(data);
+  fillPTLink();
+  renderPretradeHistory();
+  setSyncing('ok');toast(editPretradeId?t('toast.pretradeUpdated'):t('toast.pretradeSaved'));clearPT();
+}
+
+function clearPT(){
+  ['pt-data','pt-ativo','pt-tag','pt-sessao','pt-tfmacro','pt-tfmicro','pt-rr','pt-estrutura','pt-sinal','pt-contexto',
+   'pt-tipozona','pt-gatilho','pt-stop','pt-mental','pt-just'].forEach(id=>{if($(id))$(id).value='';});
+  ['pt-dir','pt-fibo','pt-liq','pt-liqcap','pt-inducao','pt-volq','pt-volc','pt-zonaok','pt-conf','pt-chegada','pt-tipoent','pt-stopok'].forEach(id=>{
+    const g=$(id);if(g)g.querySelectorAll('.cb').forEach(b=>b.classList.remove('sel','sel-g','sel-r'));
+  });
+  editPretradeId=null;
+  selectedPretradeId=null;
+  const saveBtn=$('pt-save-btn'); if(saveBtn) saveBtn.textContent=t('pretrade.save');
+  currentDec='';document.querySelectorAll('.dcard').forEach(c=>c.classList.remove('dp','de','dc'));
+  $('pt-data').value=today();$('pt-mental').value=3;calcScore();
+}
+
+// ── PÓS-TRADE ─────────────────────────────────────
+function fillPTLink(){
+  const sel=$('po-ptlink');
+  sel.innerHTML=`<option value="">${t('posttrade.noLink')}</option>`;
+  cachedPretrades.forEach(p=>{
+    const o=document.createElement('option');o.value=p.id;
+    const sc=p.score!=null?` · ${p.score}pts (${p.grade})`:'';
+    o.textContent=`${p.data} · ${p.ativo} · ${p.direcao||'?'}${sc}`;
+    sel.appendChild(o);
+  });
+}
+
+function pretradeSummary(p){
+  return [
+    ['Date', p.data || '—'],
+    ['Asset', p.ativo || '—'],
+    ['Direction', p.direcao || '—'],
+    ['Score', p.score != null ? `${p.score} pts · ${p.grade||'—'}` : '—'],
+    ['Session', p.sessao || '—'],
+    ['Tag', p.tag || '—'],
+    ['Structure', p.estrutura || '—'],
+    ['Fibo', p.fibo || '—'],
+    ['Entry', p.tipoent || '—'],
+    ['Stop OK', p.stopok || '—'],
+    ['Decision', p.decisao || '—'],
+    ['Notes', p.just || '—']
+  ];
+}
+
+function renderPretradeHistory(){
+  const body=$('pt-history-body'), detail=$('pt-history-detail-body'), count=$('pt-history-count');
+  if(!body || !detail || !count) return;
+  const q=($('pt-history-search')?.value||'').trim().toLowerCase();
+  const data=cachedPretrades.filter(p=>{
+    if(!q) return true;
+    return [p.data,p.ativo,p.tag,p.direcao,p.sessao,p.grade].some(v=>(v||'').toString().toLowerCase().includes(q));
+  });
+  count.textContent = data.length;
+  if(!data.length){
+    body.innerHTML=`<tr><td colspan="8" class="empty">${t('history.empty')}</td></tr>`;
+    if(!selectedPretradeId) detail.innerHTML=t('history.emptyDetail');
+    return;
+  }
+  body.innerHTML=data.map((p,i)=>`
+    <tr class="${selectedPretradeId===p.id?'row-selected':''}">
+      <td style="color:var(--muted);font-family:var(--font-mono);font-size:.68rem">${data.length-i}</td>
+      <td>${p.data||'—'}</td>
+      <td style="font-weight:500">${escapeHtml(p.ativo||'—')}</td>
+      <td>${escapeHtml(p.direcao||'—')}</td>
+      <td><span class="gbadge ${p.grade==='Setup A'?'ga':p.grade==='Setup B'?'gb':'gc'}">${p.score||0}pts</span></td>
+      <td>${escapeHtml(p.sessao||'—')}</td>
+      <td>${escapeHtml(p.tag||'—')}</td>
+      <td style="display:flex;gap:.25rem;flex-wrap:wrap">
+        <button class="btn-o" onclick="selectPretrade(${p.id})">${t('history.view')}</button>
+        <button class="btn-edit" onclick="editPretrade(${p.id})">✏</button>
+        <button class="btn-o" onclick="usePretradeInPosttrade(${p.id})">${t('history.link')}</button>
+        <button class="btn-del" onclick="deletePretrade(${p.id})">✕</button>
+      </td>
+    </tr>`).join('');
+  const current = data.find(p=>p.id===selectedPretradeId) || data[0];
+  if(current) selectPretrade(current.id, false);
+}
+
+function selectPretrade(id, rerender=true){
+  selectedPretradeId=id;
+  const p=cachedPretrades.find(x=>x.id===id);
+  if(!p) return;
+  $('pt-history-detail-body').innerHTML = `<div class="fr">${pretradeSummary(p).map(([label,val])=>`<div class="fg"><div class="lr"><label>${label}</label></div><div class="inputlike">${escapeHtml(String(val||'—'))}</div></div>`).join('')}</div>`;
+  if(rerender) renderPretradeHistory();
+}
+
+function setChoiceGroupValue(groupId, value){
+  const g=$(groupId); if(!g) return;
+  const values=(value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  g.querySelectorAll('.cb').forEach(btn=>{
+    const txt=btn.textContent.replace('✓','').replace('✗','').trim();
+    btn.classList.remove('sel','sel-g','sel-r');
+    if(values.includes(txt)){
+      if(btn.textContent.includes('✓')) btn.classList.add('sel-g');
+      else if(btn.textContent.includes('✗')) btn.classList.add('sel-r');
+      else btn.classList.add('sel');
+    }
+  });
+}
+
+function editPretrade(id){
+  const p=cachedPretrades.find(x=>x.id===id); if(!p) return;
+  editPretradeId=id;
+  $('pt-save-btn').textContent=t('pretrade.update');
+  $('pt-data').value=p.data||today();
+  $('pt-ativo').value=p.ativo||'';
+  $('pt-tag').value=p.tag||'';
+  $('pt-sessao').value=p.sessao||'';
+  $('pt-tfmacro').value=p.tfmacro||'';
+  $('pt-tfmicro').value=p.tfmicro||'';
+  $('pt-rr').value=p.rr||'';
+  $('pt-estrutura').value=p.estrutura||'';
+  $('pt-sinal').value=p.sinal||'';
+  $('pt-contexto').value=p.contexto||'';
+  $('pt-tipozona').value=p.tipozona||'';
+  $('pt-gatilho').value=p.gatilho||'';
+  $('pt-stop').value=p.stop||'';
+  $('pt-mental').value=p.mental||3;
+  $('pt-just').value=p.just||'';
+  setChoiceGroupValue('pt-dir', p.direcao||'');
+  setChoiceGroupValue('pt-fibo', p.fibo||'');
+  setChoiceGroupValue('pt-liq', p.liquidez||'');
+  setChoiceGroupValue('pt-liqcap', p.liqcap||'');
+  setChoiceGroupValue('pt-inducao', p.inducao||'');
+  setChoiceGroupValue('pt-volq', p.volq||'');
+  setChoiceGroupValue('pt-volc', p.volc||'');
+  setChoiceGroupValue('pt-zonaok', p.zonaok||'');
+  setChoiceGroupValue('pt-conf', p.conf||'');
+  setChoiceGroupValue('pt-chegada', p.chegada||'');
+  setChoiceGroupValue('pt-tipoent', p.tipoent||'');
+  setChoiceGroupValue('pt-stopok', p.stopok||'');
+  currentDec=p.decisao||'';
+  document.querySelectorAll('.dcard').forEach(c=>c.classList.remove('dp','de','dc'));
+  if(currentDec==='p') document.querySelectorAll('.dcard')[0]?.classList.add('dp');
+  if(currentDec==='e') document.querySelectorAll('.dcard')[1]?.classList.add('de');
+  if(currentDec==='c') document.querySelectorAll('.dcard')[2]?.classList.add('dc');
+  calcScore();
+  switchTab('pretrade', $('nav-pretrade'));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function usePretradeInPosttrade(id){
+  fillPTLink();
+  $('po-ptlink').value=String(id);
+  const p=cachedPretrades.find(x=>x.id===id);
+  if(p){
+    $('po-ativo').value = p.ativo || '';
+    $('po-dir').value = p.direcao || '';
+    $('po-tipoent').value = p.tipoent || '';
+    $('po-tipozona').value = p.tipozona || '';
+    $('po-estrutura').value = p.estrutura || '';
+    $('po-sessao').value = p.sessao || '';
+    $('po-chegada').value = p.chegada || '';
+    $('po-liq').value = p.liquidez || '';
+  }
+  switchTab('postrade', $('nav-postrade'));
+  toast(t('toast.pretradeLinked'));
+}
+
+async function deletePretrade(id){
+  if(!confirm(t('history.confirmDelete'))) return;
+  setSyncing('syncing');
+  const {error}=await sb.from('pretrades').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
+  cachedPretrades = cachedPretrades.filter(p=>p.id!==id);
+  if(selectedPretradeId===id) selectedPretradeId=null;
+  fillPTLink();
+  renderPretradeHistory();
+  setSyncing('ok');
+  toast(t('toast.pretradeDeleted'),'var(--red)');
+}
+
+async function savePO(){
+  if(!$('po-ativo').value.trim()||!$('po-result').value){toast(t('toast.tradeRequired'),'var(--red)');return;}
+  const btn=$('po-save-btn');btn.disabled=true;setSyncing('syncing');
+  const ptId=$('po-ptlink').value?parseInt($('po-ptlink').value):null;
+  const linked=ptId&&cachedPretrades.find(p=>p.id===ptId);
+  const record={
+    user_id:currentUser.id,data:$('po-data').value||today(),ativo:$('po-ativo').value.trim(),
+    tag:$('po-tag').value||null,direcao:$('po-dir').value||null,resultado:$('po-result').value,
+    resultado_r:parseFloat($('po-r').value)||0,rr_real:$('po-rr').value||null,
+    pretrade_id:ptId,pretrade_score:linked?linked.score:null,pretrade_grade:linked?linked.grade:null,
+    tipoent:$('po-tipoent').value||null,tipozona:$('po-tipozona').value||null,
+    gatilho:$('po-gatilho').value||null,estrutura:$('po-estrutura').value||null,
+    pd:$('po-pd').value||null,liquidez:$('po-liq').value||null,sessao:$('po-sessao').value||null,
+    chegada:$('po-chegada').value||null,qualidade:$('po-qual').value||null,
+    emocao:$('po-emocao').value||null,stopok:$('po-stopok').value||null,
+    plano:$('po-plano').value||null,notas:$('po-notas').value||null
+  };
+  const {data,error}=await sb.from('trades').insert(record).select().single();
+  btn.disabled=false;
+  if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
+  cachedTrades.unshift(data);
+  setSyncing('ok');toast(t('toast.tradeSaved'));clearPO();
+}
+
+function clearPO(){
+  ['po-ativo','po-r','po-rr','po-notas','po-tag'].forEach(id=>{if($(id))$(id).value='';});
+  ['po-dir','po-result','po-tipoent','po-tipozona','po-gatilho','po-estrutura',
+   'po-pd','po-liq','po-sessao','po-chegada','po-qual','po-emocao','po-stopok','po-plano'].forEach(id=>{if($(id))$(id).value='';});
+  $('po-ptlink').value='';$('po-data').value=today();
+}
+
+// ── DASHBOARD ─────────────────────────────────────
+function stat(trades,keyFn){
+  const m={};
+  trades.forEach(t=>{const k=keyFn(t)||'N/D';if(!m[k])m[k]={total:0,wins:0,r:0};m[k].total++;m[k].r+=(t.resultado_r||0);if(t.resultado==='Win')m[k].wins++;});
+  return Object.entries(m).sort((a,b)=>b[1].total-a[1].total).map(([k,v])=>({k,total:v.total,wins:v.wins,r:v.r,wr:v.total?((v.wins/v.total)*100).toFixed(0)+'%':'—',rm:v.total?(v.r/v.total).toFixed(2):'—'}));
+}
+function splitCard(title,rows,valFn){
+  if(!rows.length)return`<div class="sc"><div class="sct">${title}</div><div style="color:var(--muted);font-size:.8rem">Sem dados</div></div>`;
+  return`<div class="sc"><div class="sct">${title}</div>${rows.map(r=>`<div class="sr"><span class="srl">${r.k}</span><span class="srv">${valFn(r)} <span style="color:var(--muted);font-size:.68rem">(${r.total})</span></span></div>`).join('')}</div>`;
+}
+
+function renderDash(){
+  const trades=cachedTrades;const n=trades.length;
+  if(n===0){
+    $('mgrid').innerHTML=`<div class="empty" style="grid-column:1/-1">Ainda não há trades registados.<br><em>Começa na próxima sessão.</em></div>`;
+    $('sgrid').innerHTML='';$('tbody').innerHTML=`<tr><td colspan="14" class="empty">—</td></tr>`;return;
+  }
+  const wins=trades.filter(t=>t.resultado==='Win').length,losses=trades.filter(t=>t.resultado==='Loss').length;
+  const wr=((wins/n)*100).toFixed(1),totalR=trades.reduce((s,t)=>s+(t.resultado_r||0),0),avgR=(totalR/n).toFixed(2);
+  $('mgrid').innerHTML=`
+    <div class="mc ${parseFloat(wr)>=50?'g':'r'}"><div class="mlbl">Win Rate</div><div class="mval">${wr}%</div><div class="msub">${wins}W · ${losses}L · ${n-wins-losses}BE</div></div>
+    <div class="mc ${parseFloat(avgR)>=0?'g':'r'}"><div class="mlbl">R Médio</div><div class="mval">${parseFloat(avgR)>=0?'+':''}${avgR}R</div><div class="msub">por trade</div></div>
+    <div class="mc ${totalR>=0?'g':'r'}"><div class="mlbl">Total Acumulado</div><div class="mval">${totalR>=0?'+':''}${totalR.toFixed(2)}R</div><div class="msub">${n} trades</div></div>
+    <div class="mc c"><div class="mlbl">Trades Registados</div><div class="mval">${n}</div><div class="msub">desde o início</div></div>`;
+
+  const withPT=trades.filter(t=>t.pretrade_id),withoutPT=trades.filter(t=>!t.pretrade_id);
+  const fp=trades.filter(t=>t.plano==='Sim'),nf=trades.filter(t=>t.plano==='Não');
+  const gA=trades.filter(t=>t.pretrade_grade==='Setup A'),gB=trades.filter(t=>t.pretrade_grade==='Setup B'),gC=trades.filter(t=>t.pretrade_grade==='Fraco');
+  const pct=(arr)=>arr.length?((arr.filter(t=>t.resultado==='Win').length/arr.length)*100).toFixed(0)+'%':'—';
+
+  $('sgrid').innerHTML=`
+    ${splitCard('Win rate por tipo de entrada',stat(trades,t=>t.tipoent),r=>r.wr)}
+    ${splitCard('Win rate por zona',stat(trades,t=>t.tipozona),r=>r.wr)}
+    ${splitCard('Win rate por sessão',stat(trades,t=>t.sessao),r=>r.wr)}
+    ${splitCard('Win rate por ativo',stat(trades,t=>t.ativo),r=>r.wr)}
+    ${splitCard('R médio por emoção',stat(trades,t=>t.emocao),r=>r.rm+'R')}
+    ${splitCard('R médio por chegada',stat(trades,t=>t.chegada),r=>r.rm+'R')}
+    <div class="sc"><div class="sct">Com pré-trade vs sem</div>
+      <div class="sr"><span class="srl">Com pré-trade (${withPT.length})</span><span class="srv">${pct(withPT)}</span></div>
+      <div class="sr"><span class="srl">Sem pré-trade (${withoutPT.length})</span><span class="srv">${pct(withoutPT)}</span></div>
+    </div>
+    <div class="sc"><div class="sct">Seguiu o plano?</div>
+      <div class="sr"><span class="srl">Sim (${fp.length})</span><span class="srv">${pct(fp)}</span></div>
+      <div class="sr"><span class="srl">Não (${nf.length})</span><span class="srv">${pct(nf)}</span></div>
+    </div>
+    <div class="sc"><div class="sct">Win rate por grade do setup</div>
+      <div class="sr"><span class="srl">Setup A (${gA.length})</span><span class="srv" style="color:var(--green)">${pct(gA)}</span></div>
+      <div class="sr"><span class="srl">Setup B (${gB.length})</span><span class="srv" style="color:var(--amber)">${pct(gB)}</span></div>
+      <div class="sr"><span class="srl">Fraco (${gC.length})</span><span class="srv" style="color:var(--red)">${pct(gC)}</span></div>
+    </div>`;
+
+  const rows=trades.map((t,i)=>{
+    const rc=t.resultado_r>0?'rp':t.resultado_r<0?'rn':'rz';
+    const badge=t.resultado==='Win'?'bw':t.resultado==='Loss'?'bl':'bb';
+    const lk=t.pretrade_id&&cachedPretrades.find(p=>p.id===t.pretrade_id);
+    const lkCell=lk?`<span class="lbadge">🔗 ${lk.data}</span>`:`<span style="color:var(--muted);font-size:.72rem">—</span>`;
+    const gradeCell=t.pretrade_grade?`<span class="gbadge ${t.pretrade_grade==='Setup A'?'ga':t.pretrade_grade==='Setup B'?'gb':'gc'}">${t.pretrade_score}pts</span>`:`<span style="color:var(--muted)">—</span>`;
+    return`<tr>
+      <td style="color:var(--muted);font-family:var(--font-mono);font-size:.68rem">${n-i}</td>
+      <td>${t.data}</td><td style="color:var(--text);font-weight:500">${t.ativo}</td>
+      <td>${t.direcao||'—'}</td><td><span class="badge ${badge}">${t.resultado}</span></td>
+      <td class="${rc}">${t.resultado_r>0?'+':''}${t.resultado_r}R</td>
+      <td>${gradeCell}</td><td>${t.tipoent||'—'}</td><td>${t.tipozona||'—'}</td>
+      <td>${t.sessao||'—'}</td><td>${t.emocao||'—'}</td>
+      <td style="color:${t.plano==='Sim'?'var(--green)':t.plano==='Não'?'var(--red)':'var(--gold)'}">${t.plano||'—'}</td>
+      <td>${lkCell}</td>
+      <td style="display:flex;gap:.2rem;align-items:center">
+        <button class="btn-edit" onclick="openEdit(${t.id})">✏</button>
+        <button class="btn-del" onclick="delTrade(${t.id})">✕</button>
+      </td></tr>`;
+  }).join('');
+  $('tbody').innerHTML=rows;
+}
+
+async function delTrade(id){
+  if(!confirm('Apagar este trade?'))return;
+  setSyncing('syncing');
+  const {error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){setSyncing('error');toast('Erro ao apagar: '+error.message,'var(--red)');return;}
+  cachedTrades=cachedTrades.filter(t=>t.id!==id);
+  setSyncing('ok');renderDash();toast('Trade eliminado','var(--red)');
+}
+
+// ── EDIT MODAL ────────────────────────────────────
+function openEdit(id){
+  const t=cachedTrades.find(x=>x.id===id);if(!t)return;
+  editId=id;
+  $('edit-body').innerHTML=`
+    <div class="fr" style="margin-bottom:.8rem">
+      <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">DATA</label><input type="date" id="e-data" value="${t.data}"></div>
+      <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">ATIVO</label><input type="text" id="e-ativo" value="${t.ativo}"></div>
+    </div>
+    <div class="fr" style="margin-bottom:.8rem">
+      <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">RESULTADO</label>
+        <select id="e-result"><option ${t.resultado==='Win'?'selected':''}>Win</option><option ${t.resultado==='Loss'?'selected':''}>Loss</option><option ${t.resultado==='Breakeven'?'selected':''}>Breakeven</option></select>
+      </div>
+      <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">R</label><input type="number" id="e-r" value="${t.resultado_r}" step="0.1"></div>
+      <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">EMOÇÃO</label>
+        <select id="e-emocao"><option value="">—</option>${['Calmo','Ansioso','Confiante','Com medo','Impulsivo','Neutro'].map(e=>`<option ${t.emocao===e?'selected':''}>${e}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:.8rem"><label style="font-size:.75rem;color:var(--subtext)">SEGUIU O PLANO?</label>
+      <select id="e-plano"><option value="">—</option>${['Sim','Não','Parcialmente'].map(e=>`<option ${t.plano===e?'selected':''}>${e}</option>`).join('')}</select>
+    </div>
+    <div class="fg"><label style="font-size:.75rem;color:var(--subtext)">NOTAS</label><textarea id="e-notas" style="min-height:80px">${t.notas||''}</textarea></div>`;
+  $('editModal').classList.add('open');
+}
+function closeEdit(){$('editModal').classList.remove('open');editId=null;}
+async function saveEdit(){
+  setSyncing('syncing');
+  const updates={data:$('e-data').value,ativo:$('e-ativo').value,resultado:$('e-result').value,resultado_r:parseFloat($('e-r').value)||0,emocao:$('e-emocao').value,plano:$('e-plano').value,notas:$('e-notas').value};
+  const {data,error}=await sb.from('trades').update(updates).eq('id',editId).eq('user_id',currentUser.id).select().single();
+  if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
+  const idx=cachedTrades.findIndex(t=>t.id===editId);
+  if(idx>=0)cachedTrades[idx]={...cachedTrades[idx],...updates};
+  setSyncing('ok');closeEdit();renderDash();toast('Trade atualizado ✓');
+}
+
+// ── EXPORT CSV ────────────────────────────────────
+function exportCSV(type){
+  const isT=type==='trades';
+  const data=isT?cachedTrades:cachedPretrades;
+  if(!data.length){toast('Sem dados para exportar','var(--red)');return;}
+  let headers,rows;
+  if(isT){
+    headers=['ID','Data','Ativo','Tag','Direcao','Resultado','ResultadoR','RRReal','PreTradeID','ScorePT','GradePT','TipoEntrada','TipoZona','Gatilho','Estrutura','PD','Liquidez','Sessao','Chegada','Qualidade','Emocao','StopOk','Plano','Notas'];
+    rows=data.map(t=>[t.id,t.data,t.ativo,t.tag||'',t.direcao,t.resultado,t.resultado_r,t.rr_real||'',t.pretrade_id||'',t.pretrade_score||'',t.pretrade_grade||'',t.tipoent,t.tipozona,t.gatilho,t.estrutura,t.pd,t.liquidez,t.sessao,t.chegada,t.qualidade,t.emocao,t.stopok,t.plano,`"${(t.notas||'').replace(/"/g,'""')}"`]);
+  }else{
+    headers=['ID','Data','Ativo','Tag','Direcao','Estrutura','Fibo','Sessao','TFMacro','TFMicro','RR','LiqCap','VolQ','VolC','TipoZona','ZonaOk','Confluencias','Chegada','TipoEntrada','Stop','StopOk','Mental','Decisao','Score','Grade','Justificacao'];
+    rows=data.map(p=>[p.id,p.data,p.ativo,p.tag||'',p.direcao,p.estrutura,p.fibo,p.sessao,p.tfmacro,p.tfmicro,p.rr||'',p.liqcap,p.volq,p.volc,p.tipozona,p.zonaok,`"${(p.conf||'').replace(/"/g,'""')}"`,p.chegada,p.tipoent,p.stop,p.stopok,p.mental,p.decisao,p.score||0,p.grade||'',`"${(p.just||'').replace(/"/g,'""')}"`]);
+  }
+  const csv=[headers.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`fxsensei_${type}_${today()}.csv`;a.click();URL.revokeObjectURL(url);
+  toast(`${isT?'Trades':'Pré-trades'} exportados ✓`);
+}
+
+const I18N = {
+  en: {
+    auth:{loginMissing:'Enter email and password.',registerMissing:'Enter email and password.',passwordShort:'Password must be at least 6 characters.',registerSuccess:'Account created. Check your email to confirm, or log in directly if confirmation is disabled.'},
+    toast:{loadError:'Error loading data: ',saveError:'Error saving: ',pretradeRequired:'Please fill in at least the asset.',tradeRequired:'Please fill in asset and result.',pretradeSaved:'Pre-trade saved ✓',pretradeUpdated:'Pre-trade updated ✓',tradeSaved:'Trade saved ✓',pretradeLinked:'Pre-trade linked to post-trade ✓',pretradeDeleted:'Pre-trade deleted'},
+    history:{empty:'No saved analyses found.',emptyDetail:'Select an analysis to review its full structure.',view:'View',link:'Link',confirmDelete:'Delete this pre-trade analysis?'},
+    pretrade:{save:'Save Analysis',update:'Update Analysis'},
+    posttrade:{noLink:'— None —'}
+  },
+  pt: {
+    auth:{loginMissing:'Preenche email e password.',registerMissing:'Preenche email e password.',passwordShort:'Password mínimo 6 caracteres.',registerSuccess:'Conta criada! Verifica o teu email para confirmar (ou entra diretamente se não houver confirmação ativa).'},
+    toast:{loadError:'Erro a carregar dados: ',saveError:'Erro ao guardar: ',pretradeRequired:'Preenche pelo menos o ativo',tradeRequired:'Preenche ativo e resultado',pretradeSaved:'Análise guardada ✓',pretradeUpdated:'Análise atualizada ✓',tradeSaved:'Trade guardado ✓',pretradeLinked:'Pré-trade ligado ao pós-trade ✓',pretradeDeleted:'Pré-trade eliminado'},
+    history:{empty:'Sem análises guardadas.',emptyDetail:'Seleciona uma análise para rever a estrutura completa.',view:'Ver',link:'Ligar',confirmDelete:'Apagar esta análise pré-trade?'},
+    pretrade:{save:'Guardar Análise',update:'Atualizar Análise'},
+    posttrade:{noLink:'— Nenhuma —'}
+  }
+};
+
+function t(path){
+  return path.split('.').reduce((acc,key)=>acc&&acc[key], I18N[currentLang]) ??
+         path.split('.').reduce((acc,key)=>acc&&acc[key], I18N.en) ?? path;
+}
+function escapeHtml(str=''){ return String(str).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function formatHeaderDate(){ return new Date().toLocaleDateString(localeMap[currentLang]||'en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'}).toUpperCase(); }
+function setLanguage(lang){
+  currentLang = APP_CONFIG.supportedLanguages.includes(lang) ? lang : APP_CONFIG.defaultLanguage;
+  localStorage.setItem('fxs_lang', currentLang);
+  applyTranslations();
+  renderPretradeHistory();
+  fillPTLink();
+}
+function applyTranslations(){
+  document.documentElement.lang = currentLang;
+  document.title = currentLang==='pt' ? 'FX Sensei — Diário de Trading' : 'FX Sensei — Trading Journal';
+  const labels = {
+    'loader-text': currentLang==='pt' ? 'A carregar...' : 'Loading...',
+    'logoutBtn': currentLang==='pt' ? 'Sair' : 'Logout',
+    'nav-pretrade': currentLang==='pt' ? 'Pré-Trade' : 'Pre-Trade',
+    'nav-postrade': currentLang==='pt' ? 'Pós-Trade' : 'Post-Trade',
+    'nav-history': currentLang==='pt' ? 'Histórico Pré-Trade' : 'Pre-Trade History',
+    'nav-dashboard': 'Dashboard',
+    'nav-guide': currentLang==='pt' ? 'Guia' : 'Guide',
+    'settings-title': currentLang==='pt' ? 'Ajustes' : 'Settings',
+    'settings-theme-label': currentLang==='pt' ? 'Tema' : 'Theme',
+    'settings-mode-label': currentLang==='pt' ? 'Modo' : 'Mode',
+    'settings-text-size-label': currentLang==='pt' ? 'Tamanho do texto' : 'Text size',
+    'settings-size-prefix': currentLang==='pt' ? 'Tamanho' : 'Size',
+    'settings-small': currentLang==='pt' ? 'Pequeno' : 'Small',
+    'settings-normal': currentLang==='pt' ? 'Normal' : 'Normal',
+    'settings-large': currentLang==='pt' ? 'Grande' : 'Large',
+    'settings-language-label': currentLang==='pt' ? 'Idioma' : 'Language',
+    'settings-language-current': currentLang==='pt' ? 'Idioma da interface' : 'Interface language',
+    'settings-export-label': currentLang==='pt' ? 'Exportar dados' : 'Export data',
+    'history-title': currentLang==='pt' ? 'Histórico Pré-Trade' : 'Pre-Trade History',
+    'history-subtitle': currentLang==='pt' ? 'Navega, revê, edita e liga análises guardadas' : 'Browse, review, edit and link saved analyses',
+    'history-search-label': currentLang==='pt' ? 'Pesquisar por ativo / tag / data' : 'Search by asset / tag / date',
+    'history-total-label': currentLang==='pt' ? 'Análises guardadas' : 'Saved analyses',
+    'pth-col-date': currentLang==='pt' ? 'Data' : 'Date',
+    'pth-col-asset': currentLang==='pt' ? 'Ativo' : 'Asset',
+    'pth-col-direction': currentLang==='pt' ? 'Direção' : 'Direction',
+    'pth-col-score': 'Score',
+    'pth-col-session': currentLang==='pt' ? 'Sessão' : 'Session',
+    'pth-col-tag': 'Tag',
+    'pth-col-actions': currentLang==='pt' ? 'Ações' : 'Actions',
+    'history-detail-title': currentLang==='pt' ? 'Detalhe da análise' : 'Analysis detail'
+  };
+  Object.entries(labels).forEach(([id,val])=>{ const el=$(id); if(el) el.textContent=val; });
+  const saveBtn=$('pt-save-btn'); if(saveBtn) saveBtn.textContent = editPretradeId ? t('pretrade.update') : t('pretrade.save');
+  const postBtn=$('po-save-btn'); if(postBtn) postBtn.textContent = currentLang==='pt' ? 'Guardar Trade' : 'Save Trade';
+  const search=$('pt-history-search'); if(search) search.placeholder = currentLang==='pt' ? 'Ex: EURUSD, Londres, 2026-03-12' : 'Ex: EURUSD, London, 2026-03-12';
+  if($('hdate')) $('hdate').textContent = formatHeaderDate();
+}
+
+// ── SETTINGS ──────────────────────────────────────
+function openSettings(){$('sov').classList.add('open');$('sp').classList.add('open');}
+function closeSettings(){$('sov').classList.remove('open');$('sp').classList.remove('open');}
+function applyFS(s){document.documentElement.style.setProperty('--font-size',s+'px');const el=$('fslbl'); if(el) el.textContent=s+'px';localStorage.setItem('fxs_fs',s);}
+function autoTheme(){const h=new Date().getHours();return(h>=8&&h<20)?'light':'dark';}
+function applyTheme(t){document.body.classList.remove('light','dark');document.body.classList.add(t);const btn=$('themeBtn');if(btn)btn.textContent=t==='light'?'🌙':'☀️';localStorage.setItem('fxs_theme',t);}
+function toggleTheme(){applyTheme(document.body.classList.contains('light')?'dark':'light');}
+
+// ── TOAST ─────────────────────────────────────────
+function toast(msg,c='var(--green)'){
+  const t=$('toast');
+  if(!t){ console.warn('Toast element not found:', msg); return; }
+  t.textContent=msg;t.style.background=c;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+
+// ── DIAGNOSTICS ───────────────────────────────────
+function setDebugBox(msg, show=true){
+  const box=$('debug-box');
+  if(!box) return;
+  box.style.display=show?'block':'none';
+  box.textContent=msg;
+}
+
+async function runDiagnostics(){
+  const lines=[];
+  setDebugBox('Running diagnostics...');
+  try{
+    lines.push('HTML loaded: OK');
+    lines.push('Supabase SDK: ' + (window.supabase ? 'OK' : 'MISSING'));
+    lines.push('Online: ' + (navigator.onLine ? 'YES' : 'NO'));
+    lines.push('URL: ' + APP_CONFIG.supabaseUrl);
+    lines.push('Anon key present: ' + (!!APP_CONFIG.supabaseAnonKey));
+    try{
+      const { data, error } = await sb.auth.getSession();
+      lines.push('getSession: ' + (error ? 'ERROR ' + error.message : 'OK'));
+      lines.push('Active session: ' + (data?.session?.user?.email || 'none'));
+    }catch(err){
+      lines.push('getSession threw: ' + err.message);
+    }
+    try{
+      const pt = await sb.from('pretrades').select('id', { count:'exact', head:true });
+      lines.push('pretrades access: ' + (pt.error ? 'ERROR ' + pt.error.message : 'OK'));
+    }catch(err){
+      lines.push('pretrades threw: ' + err.message);
+    }
+    try{
+      const tr = await sb.from('trades').select('id', { count:'exact', head:true });
+      lines.push('trades access: ' + (tr.error ? 'ERROR ' + tr.error.message : 'OK'));
+    }catch(err){
+      lines.push('trades threw: ' + err.message);
+    }
+  }catch(err){
+    lines.push('Diagnostics fatal: ' + err.message);
+  }
+  setDebugBox(lines.join('\n'));
+}
+
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error || event.message);
+  const msg = 'Runtime error: ' + (event.error?.message || event.message);
+  setDebugBox(msg);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  const reason = event.reason?.message || String(event.reason);
+  setDebugBox('Unhandled promise rejection: ' + reason);
+});
+
+// ── INIT ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async ()=>{
+  applyTheme(localStorage.getItem('fxs_theme')||autoTheme());
+  // setLanguage is called inside initApp after data loads — not here
+  // to avoid calling renderPretradeHistory/fillPTLink before Supabase data is ready
+  await bootstrapApp();
+});
+
+</script>
+
+<div id="sov" class="modal-overlay" onclick="closeSettings()"></div>
+<div id="sp" class="modal-overlay" style="z-index:601">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeSettings()">✕</button>
+    <div class="modal-title" id="settings-title">Ajustes</div>
+    <div class="fg" style="margin-bottom:1rem">
+      <label id="settings-text-size-label">Tamanho do texto</label>
+      <div style="display:flex;align-items:center;gap:.8rem;margin-top:.45rem">
+        <span id="settings-size-prefix">Tamanho</span>
+        <input type="range" id="fsrange" min="14" max="20" step="1" value="16" oninput="applyFS(this.value)">
+        <strong id="fslbl">16px</strong>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:1rem">
+      <label id="settings-language-label">Idioma</label>
+      <div style="display:flex;gap:.6rem;margin-top:.45rem">
+        <button class="btn-s" type="button" onclick="setLanguage('pt');closeSettings()">PT</button>
+        <button class="btn-s" type="button" onclick="setLanguage('en');closeSettings()">EN</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label id="settings-export-label">Exportar dados</label>
+      <div style="display:flex;gap:.6rem;margin-top:.45rem;flex-wrap:wrap">
+        <button class="btn-s" type="button" onclick="exportCSV('pretrades')">CSV Pré-Trades</button>
+        <button class="btn-s" type="button" onclick="exportCSV('trades')">CSV Trades</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" class="modal-overlay">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeEdit()">✕</button>
+    <div class="modal-title">Editar Trade</div>
+    <div id="edit-body"></div>
+    <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
+      <button class="btn-s" type="button" onclick="closeEdit()">Cancelar</button>
+      <button class="btn-p" type="button" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" aria-live="polite"></div>
+</body>
+</html>
