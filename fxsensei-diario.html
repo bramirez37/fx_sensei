@@ -236,11 +236,12 @@
     </div>
   </header>
   <nav>
-    <button class="tbtn active" id="nav-pretrade" onclick="switchTab('pretrade',this)">Pre-Trade</button>
-    <button class="tbtn" id="nav-postrade" onclick="switchTab('postrade',this)">Post-Trade</button>
-    <button class="tbtn" id="nav-history" onclick="switchTab('history',this)">Pre-Trade History</button>
+    <button class="tbtn active" id="nav-pretrade" onclick="switchTab('pretrade',this)">Pré-Trade</button>
+    <button class="tbtn" id="nav-postrade" onclick="switchTab('postrade',this)">Pós-Trade</button>
+    <button class="tbtn" id="nav-history" onclick="switchTab('history',this)">Histórico Pré</button>
+    <button class="tbtn" id="nav-trade-history" onclick="switchTab('trade-history',this)">Histórico Pós</button>
     <button class="tbtn" id="nav-dashboard" onclick="switchTab('dashboard',this)">Dashboard</button>
-    <button class="tbtn" id="nav-guide" onclick="switchTab('guia',this)">Guide</button>
+    <button class="tbtn" id="nav-guide" onclick="switchTab('guia',this)">Guia</button>
   </nav>
 
   <!-- PRÉ-TRADE -->
@@ -551,6 +552,39 @@
     </div>
   </div>
 
+  <!-- PÓS-TRADE HISTORY -->
+  <div class="tab" id="tab-trade-history">
+    <div class="stitle">Histórico Pós-Trade</div>
+    <div class="ssub">Todos os trades registados · edita, revê ou apaga</div>
+    <div class="fb">
+      <div class="fr" style="align-items:end">
+        <div class="fg" style="flex:2">
+          <div class="lr"><label>Pesquisar por ativo / resultado / data</label></div>
+          <input type="text" id="th-search" placeholder="Ex: EURUSD, Win, 2026-03-12" oninput="renderTradeHistory()">
+        </div>
+        <div class="fg">
+          <div class="lr"><label>Trades guardados</label></div>
+          <div class="score-badge grade-b" id="th-count">0</div>
+        </div>
+      </div>
+      <div class="twrap" style="margin-top:1rem">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Data</th><th>Ativo</th><th>Dir</th><th>Resultado</th><th>R</th>
+              <th>Score PT</th><th>Entrada</th><th>Sessão</th><th>Emoção</th><th>Plano?</th><th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="th-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="fb" id="th-detail" style="margin-top:1rem">
+      <div class="fbt">Detalhe do trade</div>
+      <div id="th-detail-body" class="empty">Seleciona um trade para ver o detalhe completo.</div>
+    </div>
+  </div>
+
   <!-- DASHBOARD -->
   <div class="tab" id="tab-dashboard">
     <div class="stitle">Dashboard</div>
@@ -574,16 +608,48 @@
 
   <!-- GUIA -->
   <div class="tab" id="tab-guia">
-    <div class="stitle">Guia de Utilização</div>
-    <div class="ssub">Como usar o diário — método Juliano v4</div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
-      <div style="font-family:var(--font-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.9rem">Versão Cloud</div>
-      <p style="font-size:.9rem;color:var(--subtext);line-height:1.7">Os teus dados estão guardados na cloud (Supabase). Podes aceder a partir de qualquer dispositivo com a tua conta. Os dados ficam associados ao teu email — nunca se perdem se limpares o browser.</p>
-    </div>
+    <div class="stitle">Guia — Método Juliano</div>
+    <div class="ssub">O que fazer no chart, passo a passo, antes de abrir a app</div>
+
     <div style="background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:.88rem;color:var(--text);font-style:italic">"Se não consegues explicar este trade a outra pessoa em 30 segundos com clareza, ainda não estás pronto para o executar." — Juliano</div>
+
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
-      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Score de Qualidade</div>
-      <p style="font-size:.86rem;color:var(--subtext);line-height:1.6;margin-bottom:.75rem">Calculado automaticamente enquanto preenches o pré-trade.</p>
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.9rem">FASE 1 — Antes de abrir a app (no chart)</div>
+      <div style="font-size:.88rem;color:var(--subtext);line-height:1.8">
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">01.</span> <strong style="color:var(--text)">Abre o TF Macro (D ou H4).</strong> Identifica a estrutura: Bullish, Bearish ou Ranging. Marca os topos e fundos relevantes. Define a direção do dia.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">02.</span> <strong style="color:var(--text)">Verifica o último sinal de estrutura.</strong> Houve BoS (quebra de estrutura, confirma tendência) ou CHoCH (mudança de caráter, alerta de inversão)? Isso define se procuras Compra ou Venda.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">03.</span> <strong style="color:var(--text)">Desenha a Fibonacci na última pernada de referência.</strong> De topo a fundo (venda) ou de fundo a topo (compra). Identifica se o preço está em Premium (&gt;50%) ou Discount (&lt;50%).</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">04.</span> <strong style="color:var(--text)">Marca os níveis de liquidez.</strong> PDH, PDL, PWH, PWL, PMH, PML, Equal Highs/Lows, trendlines de varejo. O preço vai buscar liquidez antes de reagir.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">05.</span> <strong style="color:var(--text)">Identifica a zona de interesse (OB, Imbalance, POC, Break Block).</strong> Está alinhada com a direção? Está em Premium/Discount correto? Se não — não há trade.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">06.</span> <strong style="color:var(--text)">Verifica o volume na criação da zona.</strong> Foi um impulso com volume acima da média? A correção de volta à zona está com volume fraco? Se sim — zona válida.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">07.</span> <strong style="color:var(--text)">Conta as confluências.</strong> Mínimo 2-3 para considerar a zona forte. OB + Imbalance + 0.78 Fibo = zona de alta probabilidade.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">08.</span> <strong style="color:var(--text)">Define o gatilho no TF Micro (M15 ou M5).</strong> O que precisas de ver? CHoCH bullish dentro do OB? BoS micro? Nunca entres sem gatilho definido.</div>
+        <div><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">09.</span> <strong style="color:var(--text)">Coloca o stop técnico.</strong> Abaixo do OB (compra) ou acima do OB (venda). Se for atingido, o trade deixa de fazer sentido. <em>Nunca</em> é um número redondo.</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.9rem">FASE 2 — Dentro da app (pré-trade)</div>
+      <div style="font-size:.88rem;color:var(--subtext);line-height:1.8">
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">10.</span> Abre o separador <strong style="color:var(--text)">Pré-Trade</strong> e preenche as 8 secções com o que viste no chart.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">11.</span> Observa o <strong style="color:var(--text)">Score de qualidade</strong> a calcular em tempo real. Menos de 6 pontos = não entres.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">12.</span> Lê os <strong style="color:var(--text)">Warnings</strong>. Se há contradições (comprar em bearish, chegada impulsiva, mental baixo) — pára e avalia.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">13.</span> Seleciona a <strong style="color:var(--text)">Decisão Final</strong>: Procurar / Esperar / Cancelar. Escreve a justificação em 1-2 frases.</div>
+        <div><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">14.</span> Clica <strong style="color:var(--text)">Guardar Análise</strong>. Só depois voltas ao chart a aguardar o gatilho.</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.9rem">FASE 3 — Depois de fechar o trade</div>
+      <div style="font-size:.88rem;color:var(--subtext);line-height:1.8">
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">15.</span> Abre o separador <strong style="color:var(--text)">Pós-Trade</strong> e regista o resultado real: R obtido, emoção, qualidade da execução.</div>
+        <div style="margin-bottom:.6rem"><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">16.</span> <strong style="color:var(--text)">Liga o pós-trade ao pré-trade</strong> correspondente (secção 02). Isto alimenta o dashboard com dados comparativos.</div>
+        <div><span style="color:var(--gold);font-family:var(--font-mono);font-weight:700">17.</span> Responde honestamente: <strong style="color:var(--text)">Seguiste o plano? Stop respeitado?</strong> Estes dois campos são os mais importantes para o teu desenvolvimento.</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Score de Qualidade — Referência</div>
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Estrutura alinhada com direção</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:.35rem .5rem;color:var(--subtext)">Premium/Discount correto</td><td style="font-family:var(--font-mono);color:var(--gold);text-align:right">+2</td></tr>
@@ -596,26 +662,27 @@
       <div style="display:flex;gap:.6rem;margin-top:.9rem;flex-wrap:wrap">
         <span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">9–12 pts → Setup A</span>
         <span style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">6–8 pts → Setup B</span>
-        <span style="background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">0–5 pts → Setup C</span>
+        <span style="background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:var(--red);border-radius:4px;padding:.25rem .7rem;font-size:.75rem;font-family:var(--font-mono)">0–5 pts → Fraco</span>
       </div>
     </div>
+
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
-      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Rotina recomendada</div>
-      <ol style="padding-left:1.1rem;color:var(--subtext);font-size:.9rem;line-height:1.75">
-        <li>Abre primeiro o separador Pre-Trade e preenche o contexto completo.</li>
-        <li>Confirma score, warnings e decisão antes de qualquer entrada.</li>
-        <li>Depois de fechares a operação, regista o Pós-Trade e liga-o ao pré-trade correspondente.</li>
-        <li>Consulta o History para rever análises e o Dashboard para padrões e estatísticas.</li>
-      </ol>
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Tipos de Zonas — Resumo</div>
+      <div style="font-size:.86rem;color:var(--subtext);line-height:1.8">
+        <div style="margin-bottom:.5rem"><strong style="color:var(--text)">Order Block (OB)</strong> — A última vela contrária antes de um impulso forte. A instituição entrou aqui. Preço volta para a testar.</div>
+        <div style="margin-bottom:.5rem"><strong style="color:var(--text)">Imbalance / FVG</strong> — Desequilíbrio entre oferta e procura. Gap de 3 velas. O preço tem tendência a preencher.</div>
+        <div style="margin-bottom:.5rem"><strong style="color:var(--text)">Break Block</strong> — Um OB que foi violado. Muda de natureza: zona de suporte torna-se resistência (e vice-versa).</div>
+        <div><strong style="color:var(--text)">POC (Point of Control)</strong> — Nível de maior volume numa range. Zona de equilíbrio onde o mercado transacionou mais.</div>
+      </div>
     </div>
+
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.4rem;margin-bottom:.9rem">
-      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Debug rápido</div>
-      <ul style="padding-left:1.1rem;color:var(--subtext);font-size:.9rem;line-height:1.75">
-        <li>Se ficar em loading, abre a consola do browser e procura erros vermelhos.</li>
-        <li>Valida login, leitura de sessão e acesso às tabelas pretrades e trades.</li>
-        <li>Confirma que o schema Supabase foi executado sem erros e com RLS ativo.</li>
-        <li>Usa o botão Debug no login para correr diagnóstico básico local.</li>
-      </ul>
+      <div style="font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem">Sinais de Estrutura</div>
+      <div style="font-size:.86rem;color:var(--subtext);line-height:1.8">
+        <div style="margin-bottom:.5rem"><strong style="color:var(--text)">BoS (Break of Structure)</strong> — Quebra de topo (bullish) ou fundo (bearish). <em>Confirma</em> a tendência existente. Continua na mesma direção.</div>
+        <div style="margin-bottom:.5rem"><strong style="color:var(--text)">CHoCH (Change of Character)</strong> — Quebra contrária: fundo mais baixo em bullish, topo mais alto em bearish. <em>Alerta de inversão</em>. Reavaliar direção.</div>
+        <div><strong style="color:var(--text)">Topo/Fundo Válido</strong> — Confirmado por impulso de saída + retração que não ultrapasse o nível. Sem confirmação = topo/fundo provisório.</div>
+      </div>
     </div>
   </div>
 
@@ -638,7 +705,9 @@ const localeMap = { en:'en-GB', pt:'pt-PT' };
 let currentUser = null;
 let editId = null;
 let editPretradeId = null;
+let editTradeId = null;
 let selectedPretradeId = null;
+let selectedTradeId = null;
 let currentDec = '';
 let currentLang = localStorage.getItem('fxs_lang') || APP_CONFIG.defaultLanguage;
 let cachedPretrades = [];
@@ -704,18 +773,18 @@ function showApp(){
   if(app) app.style.display='block';
 }
 
-// onAuthStateChange only handles events AFTER initial load (e.g. logout, token refresh)
-// bootstrapApp() handles the initial session check to avoid double-init race condition
 sb.auth.onAuthStateChange(async (_event, session) => {
-  if(_event === 'SIGNED_OUT'){
-    currentUser = null;
-    cachedPretrades = [];
-    cachedTrades = [];
-    showAuth();
-  } else if(_event === 'SIGNED_IN' && !currentUser){
-    // Handle sign-in from auth screen (after bootstrapApp found no session)
-    currentUser = session.user;
-    try{ await initApp(); }catch(e){ showAuth('Erro ao iniciar: '+e.message); }
+  try{
+    if(session?.user){
+      currentUser = session.user;
+      await initApp();
+    } else {
+      currentUser = null;
+      showAuth();
+    }
+  }catch(e){
+    console.error('Auth state error:', e);
+    showAuth('Erro de autenticação: ' + e.message);
   }
 });
 
@@ -741,7 +810,6 @@ async function initApp(){
     showLoader();
     await loadAll();
     showApp();
-    setLanguage(currentLang); // safe to call now — data is loaded and DOM is visible
     if($('hdate')) $('hdate').textContent=formatHeaderDate();
     if($('user-email')) $('user-email').textContent=currentUser?.email || '';
     if($('pt-data')) $('pt-data').value=today();
@@ -1077,11 +1145,19 @@ async function savePO(){
     emocao:$('po-emocao').value||null,stopok:$('po-stopok').value||null,
     plano:$('po-plano').value||null,notas:$('po-notas').value||null
   };
-  const {data,error}=await sb.from('trades').insert(record).select().single();
+  let data,error;
+  if(editTradeId){
+    ({data,error}=await sb.from('trades').update(record).eq('id',editTradeId).eq('user_id',currentUser.id).select().single());
+  }else{
+    ({data,error}=await sb.from('trades').insert(record).select().single());
+  }
   btn.disabled=false;
   if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
-  cachedTrades.unshift(data);
-  setSyncing('ok');toast(t('toast.tradeSaved'));clearPO();
+  const tidx=cachedTrades.findIndex(x=>x.id===data.id);
+  if(tidx>=0)cachedTrades[tidx]=data; else cachedTrades.unshift(data);
+  fillPTLink();renderTradeHistory();renderDash();
+  setSyncing('ok');toast(editTradeId?'Trade atualizado ✓':t('toast.tradeSaved'));
+  editTradeId=null;$('po-save-btn').textContent='Guardar Trade';clearPO();
 }
 
 function clearPO(){
@@ -1089,6 +1165,118 @@ function clearPO(){
   ['po-dir','po-result','po-tipoent','po-tipozona','po-gatilho','po-estrutura',
    'po-pd','po-liq','po-sessao','po-chegada','po-qual','po-emocao','po-stopok','po-plano'].forEach(id=>{if($(id))$(id).value='';});
   $('po-ptlink').value='';$('po-data').value=today();
+  editTradeId=null;
+  const saveBtn=$('po-save-btn');if(saveBtn)saveBtn.textContent='Guardar Trade';
+}
+
+
+// ── PÓS-TRADE HISTORY ────────────────────────────────────────────────────
+function tradeSummaryDetail(t){
+  const lk = t.pretrade_id && cachedPretrades.find(p=>p.id===t.pretrade_id);
+  return [
+    ['Data', t.data||'—'],
+    ['Ativo', t.ativo||'—'],
+    ['Direção', t.direcao||'—'],
+    ['Resultado', t.resultado||'—'],
+    ['R', t.resultado_r!=null?(t.resultado_r>0?'+':'')+t.resultado_r+'R':'—'],
+    ['RR Real', t.rr_real||'—'],
+    ['Score PT', t.pretrade_score!=null?`${t.pretrade_score}pts (${t.pretrade_grade||'—'})`:'—'],
+    ['Pré-trade', lk?`${lk.data} · ${lk.ativo}`:'Nenhum'],
+    ['Tipo Entrada', t.tipoent||'—'],
+    ['Tipo Zona', t.tipozona||'—'],
+    ['Gatilho', t.gatilho||'—'],
+    ['Estrutura', t.estrutura||'—'],
+    ['P/D', t.pd||'—'],
+    ['Liquidez Cap.', t.liquidez||'—'],
+    ['Sessão', t.sessao||'—'],
+    ['Chegada', t.chegada||'—'],
+    ['Qualidade', t.qualidade||'—'],
+    ['Emoção', t.emocao||'—'],
+    ['Stop OK', t.stopok||'—'],
+    ['Seguiu Plano', t.plano||'—'],
+    ['Tag', t.tag||'—'],
+    ['Notas', t.notas||'—']
+  ];
+}
+
+function renderTradeHistory(){
+  const body=$('th-body'), detail=$('th-detail-body'), count=$('th-count');
+  if(!body||!detail||!count) return;
+  const q=($('th-search')?.value||'').trim().toLowerCase();
+  const data=cachedTrades.filter(t=>{
+    if(!q) return true;
+    return [t.data,t.ativo,t.resultado,t.direcao,t.sessao,t.emocao,t.tag].some(v=>(v||'').toString().toLowerCase().includes(q));
+  });
+  count.textContent=data.length;
+  if(!data.length){
+    body.innerHTML=`<tr><td colspan="12" class="empty">Sem trades registados.</td></tr>`;
+    if(!selectedTradeId) detail.innerHTML='Seleciona um trade para ver o detalhe completo.';
+    return;
+  }
+  body.innerHTML=data.map((t,i)=>{
+    const rc=t.resultado_r>0?'rp':t.resultado_r<0?'rn':'rz';
+    const badge=t.resultado==='Win'?'bw':t.resultado==='Loss'?'bl':'bb';
+    const gradeCell=t.pretrade_grade?`<span class="gbadge ${t.pretrade_grade==='Setup A'?'ga':t.pretrade_grade==='Setup B'?'gb':'gc'}">${t.pretrade_score}pts</span>`:`<span style="color:var(--muted)">—</span>`;
+    return`<tr class="${selectedTradeId===t.id?'row-selected':''}">
+      <td style="color:var(--muted);font-family:var(--font-mono);font-size:.68rem">${data.length-i}</td>
+      <td>${t.data||'—'}</td>
+      <td style="font-weight:500">${t.ativo||'—'}</td>
+      <td>${t.direcao||'—'}</td>
+      <td><span class="badge ${badge}">${t.resultado||'—'}</span></td>
+      <td class="${rc}">${t.resultado_r!=null?(t.resultado_r>0?'+':'')+t.resultado_r+'R':'—'}</td>
+      <td>${gradeCell}</td>
+      <td>${t.tipoent||'—'}</td>
+      <td>${t.sessao||'—'}</td>
+      <td>${t.emocao||'—'}</td>
+      <td style="color:${t.plano==='Sim'?'var(--green)':t.plano==='Não'?'var(--red)':'var(--gold)'}">${t.plano||'—'}</td>
+      <td style="display:flex;gap:.25rem;flex-wrap:wrap">
+        <button class="btn-o" onclick="selectTrade(${t.id})">Ver</button>
+        <button class="btn-edit" onclick="editTradeInForm(${t.id})">✏</button>
+        <button class="btn-del" onclick="delTrade(${t.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  const current=data.find(t=>t.id===selectedTradeId)||data[0];
+  if(current) selectTrade(current.id, false);
+}
+
+function selectTrade(id, rerender=true){
+  selectedTradeId=id;
+  const t=cachedTrades.find(x=>x.id===id);
+  if(!t) return;
+  $('th-detail-body').innerHTML=`<div class="fr">${tradeSummaryDetail(t).map(([label,val])=>`<div class="fg"><div class="lr"><label>${label}</label></div><div class="inputlike">${escapeHtml(String(val||'—'))}</div></div>`).join('')}</div>`;
+  if(rerender) renderTradeHistory();
+}
+
+function editTradeInForm(id){
+  const t=cachedTrades.find(x=>x.id===id); if(!t) return;
+  editTradeId=id;
+  $('po-save-btn').textContent='Atualizar Trade';
+  $('po-data').value=t.data||today();
+  $('po-ativo').value=t.ativo||'';
+  $('po-tag').value=t.tag||'';
+  $('po-dir').value=t.direcao||'';
+  $('po-result').value=t.resultado||'';
+  $('po-r').value=t.resultado_r!=null?t.resultado_r:'';
+  $('po-rr').value=t.rr_real||'';
+  $('po-tipoent').value=t.tipoent||'';
+  $('po-tipozona').value=t.tipozona||'';
+  $('po-gatilho').value=t.gatilho||'';
+  $('po-estrutura').value=t.estrutura||'';
+  $('po-pd').value=t.pd||'';
+  $('po-liq').value=t.liquidez||'';
+  $('po-sessao').value=t.sessao||'';
+  $('po-chegada').value=t.chegada||'';
+  $('po-qual').value=t.qualidade||'';
+  $('po-emocao').value=t.emocao||'';
+  $('po-stopok').value=t.stopok||'';
+  $('po-plano').value=t.plano||'';
+  $('po-notas').value=t.notas||'';
+  fillPTLink();
+  if(t.pretrade_id) $('po-ptlink').value=String(t.pretrade_id);
+  switchTab('postrade', $('nav-postrade'));
+  window.scrollTo({top:0, behavior:'smooth'});
+  toast('A editar trade — altera os campos e clica Atualizar Trade');
 }
 
 // ── DASHBOARD ─────────────────────────────────────
@@ -1265,11 +1453,12 @@ function applyTranslations(){
   const labels = {
     'loader-text': currentLang==='pt' ? 'A carregar...' : 'Loading...',
     'logoutBtn': currentLang==='pt' ? 'Sair' : 'Logout',
-    'nav-pretrade': currentLang==='pt' ? 'Pré-Trade' : 'Pre-Trade',
-    'nav-postrade': currentLang==='pt' ? 'Pós-Trade' : 'Post-Trade',
-    'nav-history': currentLang==='pt' ? 'Histórico Pré-Trade' : 'Pre-Trade History',
+    'nav-pretrade': 'Pré-Trade',
+    'nav-postrade': 'Pós-Trade',
+    'nav-history': 'Histórico Pré',
+    'nav-trade-history': 'Histórico Pós',
     'nav-dashboard': 'Dashboard',
-    'nav-guide': currentLang==='pt' ? 'Guia' : 'Guide',
+    'nav-guide': 'Guia',
     'settings-title': currentLang==='pt' ? 'Ajustes' : 'Settings',
     'settings-theme-label': currentLang==='pt' ? 'Tema' : 'Theme',
     'settings-mode-label': currentLang==='pt' ? 'Modo' : 'Mode',
@@ -1375,8 +1564,7 @@ window.addEventListener('unhandledrejection', (event) => {
 // ── INIT ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async ()=>{
   applyTheme(localStorage.getItem('fxs_theme')||autoTheme());
-  // setLanguage is called inside initApp after data loads — not here
-  // to avoid calling renderPretradeHistory/fillPTLink before Supabase data is ready
+  setLanguage(currentLang);
   await bootstrapApp();
 });
 
