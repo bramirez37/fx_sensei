@@ -225,7 +225,7 @@
 <!-- MAIN APP -->
 <div id="app" style="display:none">
   <header>
-    <div class="logo">FX Sensei <span>/ diário</span><small>v5 · cloud</small></div>
+    <div class="logo">FX Sensei <span>/ diário</span><small>v6 · cloud</small></div>
     <div class="hright">
       <span class="sync-dot" id="sync-dot"></span>
       <div class="hdate" id="hdate"></div>
@@ -572,7 +572,7 @@
           <thead>
             <tr>
               <th>#</th><th>Data</th><th>Ativo</th><th>Dir</th><th>Resultado</th><th>R</th>
-              <th>Score PT</th><th>Entrada</th><th>Sessão</th><th>Emoção</th><th>Plano?</th><th>Ações</th>
+              <th>Score PT</th><th>Entrada</th><th>Sessão</th><th>Emoção</th><th>Plano?</th><th>Notas</th><th>Ações</th>
             </tr>
           </thead>
           <tbody id="th-body"></tbody>
@@ -748,7 +748,19 @@ async function doRegister(){
 }
 
 async function doLogout(){
+  // Full state reset before signing out
+  currentUser = null;
+  cachedPretrades = [];
+  cachedTrades = [];
+  editId = null;
+  editPretradeId = null;
+  editTradeId = null;
+  selectedPretradeId = null;
+  selectedTradeId = null;
+  currentDec = '';
+  _appBooted = false;
   await sb.auth.signOut();
+  showAuth();
 }
 
 // ── AUTH STATE / BOOTSTRAP ─────────────────────────
@@ -1034,9 +1046,9 @@ function renderPretradeHistory(){
       <td>${escapeHtml(p.tag||'—')}</td>
       <td style="display:flex;gap:.25rem;flex-wrap:wrap">
         <button class="btn-o" onclick="selectPretrade(${p.id})">${t('history.view')}</button>
-        <button class="btn-edit" onclick="editPretrade(${p.id})">✏</button>
+        <button class="btn-edit" onclick="editPretrade(${p.id})" title="Editar">Editar</button>
         <button class="btn-o" onclick="usePretradeInPosttrade(${p.id})">${t('history.link')}</button>
-        <button class="btn-del" onclick="deletePretrade(${p.id})">✕</button>
+        <button class="btn-del" onclick="deletePretrade(${p.id})" title="Apagar análise">🗑</button>
       </td>
     </tr>`).join('');
   const current = data.find(p=>p.id===selectedPretradeId) || data[0];
@@ -1049,6 +1061,11 @@ function selectPretrade(id, rerender=true){
   if(!p) return;
   $('pt-history-detail-body').innerHTML = `<div class="fr">${pretradeSummary(p).map(([label,val])=>`<div class="fg"><div class="lr"><label>${label}</label></div><div class="inputlike">${escapeHtml(String(val||'—'))}</div></div>`).join('')}</div>`;
   if(rerender) renderPretradeHistory();
+  // Scroll to detail panel smoothly
+  setTimeout(()=>{
+    const panel=$('pt-history-detail');
+    if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 80);
 }
 
 function setChoiceGroupValue(groupId, value){
@@ -1125,7 +1142,9 @@ function usePretradeInPosttrade(id){
 }
 
 async function deletePretrade(id){
-  if(!confirm(t('history.confirmDelete'))) return;
+  const p=cachedPretrades.find(x=>x.id===id);
+  const label=p?`${p.data} · ${p.ativo} · ${p.direcao||'?'}`:'esta análise';
+  openDeleteModal('Apagar análise pré-trade?', `Vais apagar permanentemente: ${label}. Esta ação não pode ser desfeita.`, async()=>{
   setSyncing('syncing');
   const {error}=await sb.from('pretrades').delete().eq('id',id).eq('user_id',currentUser.id);
   if(error){setSyncing('error');toast(t('toast.saveError')+error.message,'var(--red)');return;}
@@ -1135,6 +1154,7 @@ async function deletePretrade(id){
   renderPretradeHistory();
   setSyncing('ok');
   toast(t('toast.pretradeDeleted'),'var(--red)');
+  });
 }
 
 async function savePO(){
@@ -1226,9 +1246,9 @@ function renderTradeHistory(){
     const rc=t.resultado_r>0?'rp':t.resultado_r<0?'rn':'rz';
     const badge=t.resultado==='Win'?'bw':t.resultado==='Loss'?'bl':'bb';
     const gradeCell=t.pretrade_grade?`<span class="gbadge ${t.pretrade_grade==='Setup A'?'ga':t.pretrade_grade==='Setup B'?'gb':'gc'}">${t.pretrade_score}pts</span>`:`<span style="color:var(--muted)">—</span>`;
-    return`<tr class="${selectedTradeId===t.id?'row-selected':''}">
+    return`<tr class="${selectedTradeId===t.id?'row-selected':''}" id="th-row-${t.id}">
       <td style="color:var(--muted);font-family:var(--font-mono);font-size:.68rem">${data.length-i}</td>
-      <td>${t.data||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:.78rem">${t.data||'—'}</td>
       <td style="font-weight:500">${t.ativo||'—'}</td>
       <td>${t.direcao||'—'}</td>
       <td><span class="badge ${badge}">${t.resultado||'—'}</span></td>
@@ -1238,10 +1258,11 @@ function renderTradeHistory(){
       <td>${t.sessao||'—'}</td>
       <td>${t.emocao||'—'}</td>
       <td style="color:${t.plano==='Sim'?'var(--green)':t.plano==='Não'?'var(--red)':'var(--gold)'}">${t.plano||'—'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:.75rem" title="${t.notas||''}">${t.notas||'—'}</td>
       <td style="display:flex;gap:.25rem;flex-wrap:wrap">
         <button class="btn-o" onclick="selectTrade(${t.id})">Ver</button>
-        <button class="btn-edit" onclick="editTradeInForm(${t.id})">✏</button>
-        <button class="btn-del" onclick="delTrade(${t.id})">✕</button>
+        <button class="btn-edit" onclick="editTradeInForm(${t.id})" title="Editar">Editar</button>
+        <button class="btn-del" onclick="delTrade(${t.id})" title="Apagar trade">🗑</button>
       </td>
     </tr>`;
   }).join('');
@@ -1253,8 +1274,14 @@ function selectTrade(id, rerender=true){
   selectedTradeId=id;
   const t=cachedTrades.find(x=>x.id===id);
   if(!t) return;
-  $('th-detail-body').innerHTML=`<div class="fr">${tradeSummaryDetail(t).map(([label,val])=>`<div class="fg"><div class="lr"><label>${label}</label></div><div class="inputlike">${escapeHtml(String(val||'—'))}</div></div>`).join('')}</div>`;
+  const detail=$('th-detail-body');
+  detail.innerHTML=`<div class="fr">${tradeSummaryDetail(t).map(([label,val])=>`<div class="fg"><div class="lr"><label>${label}</label></div><div class="inputlike">${escapeHtml(String(val||'—'))}</div></div>`).join('')}</div>`;
   if(rerender) renderTradeHistory();
+  // Scroll to detail panel smoothly
+  setTimeout(()=>{
+    const panel=$('th-detail');
+    if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 80);
 }
 
 function editTradeInForm(id){
@@ -1355,20 +1382,23 @@ function renderDash(){
       <td style="color:${t.plano==='Sim'?'var(--green)':t.plano==='Não'?'var(--red)':'var(--gold)'}">${t.plano||'—'}</td>
       <td>${lkCell}</td>
       <td style="display:flex;gap:.2rem;align-items:center">
-        <button class="btn-edit" onclick="openEdit(${t.id})">✏</button>
-        <button class="btn-del" onclick="delTrade(${t.id})">✕</button>
+        <button class="btn-edit" onclick="openEdit(${t.id})" title="Editar">Editar</button>
+        <button class="btn-del" onclick="delTrade(${t.id})" title="Apagar trade">🗑</button>
       </td></tr>`;
   }).join('');
   $('tbody').innerHTML=rows;
 }
 
 async function delTrade(id){
-  if(!confirm('Apagar este trade?'))return;
+  const tr=cachedTrades.find(x=>x.id===id);
+  const label=tr?`${tr.data||''} · ${tr.ativo||''} · ${tr.resultado||''}`:'este trade';
+  openDeleteModal('Apagar trade?', `Vais apagar permanentemente: ${label}. Esta ação não pode ser desfeita.`, async()=>{
   setSyncing('syncing');
   const {error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
   if(error){setSyncing('error');toast('Erro ao apagar: '+error.message,'var(--red)');return;}
   cachedTrades=cachedTrades.filter(t=>t.id!==id);
-  setSyncing('ok');renderDash();toast('Trade eliminado','var(--red)');
+  setSyncing('ok');renderDash();renderTradeHistory();toast('Trade eliminado','var(--red)');
+  });
 }
 
 // ── EDIT MODAL ────────────────────────────────────
@@ -1570,6 +1600,21 @@ window.addEventListener('unhandledrejection', (event) => {
   setDebugBox('Unhandled promise rejection: ' + reason);
 });
 
+
+// ── DELETE MODAL ──────────────────────────────────────────────────────────
+let _deletePendingFn = null;
+function openDeleteModal(title, msg, onConfirm){
+  $('delete-modal-title').textContent = title;
+  $('delete-modal-msg').textContent = msg;
+  _deletePendingFn = onConfirm;
+  $('delete-modal-confirm').onclick = ()=>{ closeDeleteModal(); onConfirm(); };
+  $('deleteModal').classList.add('open');
+}
+function closeDeleteModal(){
+  $('deleteModal').classList.remove('open');
+  _deletePendingFn = null;
+}
+
 // ── INIT ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async ()=>{
   applyTheme(localStorage.getItem('fxs_theme')||autoTheme());
@@ -1617,6 +1662,20 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
       <button class="btn-s" type="button" onclick="closeEdit()">Cancelar</button>
       <button class="btn-p" type="button" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div id="deleteModal" class="modal-overlay">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:380px;text-align:center">
+    <div style="font-size:2rem;margin-bottom:.75rem">🗑</div>
+    <div class="modal-title" id="delete-modal-title" style="font-size:1.1rem">Apagar registo?</div>
+    <p id="delete-modal-msg" style="color:var(--subtext);font-size:.85rem;margin-bottom:1.5rem;line-height:1.6"></p>
+    <div style="display:flex;gap:.75rem;justify-content:center">
+      <button class="btn-s" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn-p" id="delete-modal-confirm" style="background:var(--red);color:#fff">Apagar</button>
     </div>
   </div>
 </div>
