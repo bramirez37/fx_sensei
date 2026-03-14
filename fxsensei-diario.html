@@ -225,7 +225,7 @@
 <!-- MAIN APP -->
 <div id="app" style="display:none">
   <header>
-    <div class="logo">FX Sensei <span>/ diário</span><small>v6.2 · cloud</small></div>
+    <div class="logo">FX Sensei <span>/ diário</span><small>v6.3 · cloud</small></div>
     <div class="hright">
       <span class="sync-dot" id="sync-dot"></span>
       <div class="hdate" id="hdate"></div>
@@ -731,9 +731,13 @@ async function doLogin(){
   const email=$('l-email').value.trim(), pass=$('l-pass').value;
   if(!email||!pass){$('l-err').textContent=t('auth.loginMissing');return;}
   $('l-btn').disabled=true;$('l-err').textContent='';
-  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  const {data, error}=await sb.auth.signInWithPassword({email,password:pass});
   $('l-btn').disabled=false;
-  if(error)$('l-err').textContent=error.message;
+  if(error){ $('l-err').textContent=error.message; return; }
+  if(data?.session?.user){
+    currentUser = data.session.user;
+    await initApp();
+  }
 }
 
 async function doRegister(){
@@ -784,27 +788,19 @@ function showApp(){
   if(app) app.style.display='block';
 }
 
-// _booting: true during initial bootstrapApp to block onAuthStateChange race
-let _booting = false;
-
-sb.auth.onAuthStateChange(async (_event, session) => {
-  if(_booting) return; // bootstrapApp is handling this
-  try{
-    if(_event === 'SIGNED_IN'){
-      currentUser = session.user;
-      await initApp();
-    } else if(_event === 'SIGNED_OUT'){
-      currentUser = null;
-      showAuth();
-    }
-  }catch(e){
-    console.error('Auth state error:', e);
-    showAuth('Erro de autenticação: ' + e.message);
+// Auth listener — only handles user-triggered events AFTER boot
+// bootstrapApp() handles the initial session check exclusively
+sb.auth.onAuthStateChange((_event, session) => {
+  if(_event === 'SIGNED_OUT'){
+    currentUser = null;
+    cachedPretrades = [];
+    cachedTrades = [];
+    showAuth();
   }
+  // SIGNED_IN after logout is handled by doLogin() → bootstrapApp()
 });
 
 async function bootstrapApp(){
-  _booting = true;
   try{
     showLoader();
     const { data, error } = await sb.auth.getSession();
@@ -818,8 +814,6 @@ async function bootstrapApp(){
   }catch(e){
     console.error('Bootstrap error:', e);
     showAuth('Erro ao iniciar. Abre a consola e valida a configuração Supabase.');
-  } finally {
-    _booting = false;
   }
 }
 
