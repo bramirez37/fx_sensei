@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>FX Sensei — Seed de Dados</title>
+<title>FX Sensei — Seed de Dados v3</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -19,7 +19,7 @@
 </head>
 <body>
 <div class="box">
-  <h1>FX Sensei — Seed de Dados</h1>
+  <h1>FX Sensei — Seed de Dados <span style="font-size:.6em;color:#4a5568">v3</span></h1>
   <p>Insere ~40 trades e pré-trades realistas na tua conta Supabase para testes.<br><strong style="color:#f43f5e">⚠️ Usa apenas numa conta de teste. Apaga depois com o botão abaixo.</strong></p>
   <button id="btn-seed" onclick="runSeed()">Inserir dados de teste</button>
   <button id="btn-clean" class="danger" onclick="runClean()" style="display:none">Apagar todos os dados de teste</button>
@@ -55,7 +55,7 @@ function rndFloat(min,max){ return parseFloat((Math.random()*(max-min)+min).toFi
 function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()-days); return d.toISOString().split('T')[0]; }
 function rndConfs(){ const c=[...conf_pool].sort(()=>Math.random()-.5).slice(0,rndInt(2,5)); return c.join(', '); }
 
-function buildPretrade(userId, dayOffset){
+function buildPretrade(dayOffset){
   const dir = Math.random()>.5 ? 'Compra' : 'Venda';
   const estrutura = dir==='Compra' ? 'Bullish' : 'Bearish';
   const fibo = dir==='Compra' ? 'Discount' : 'Premium';
@@ -81,7 +81,6 @@ function buildPretrade(userId, dayOffset){
   const grade = score>=9 ? 'Setup A' : score>=6 ? 'Setup B' : 'Fraco';
 
   return {
-    user_id: userId,
     data: dateOffset(dayOffset),
     ativo: rnd(ativos),
     tag: rnd(tags),
@@ -115,7 +114,7 @@ function buildPretrade(userId, dayOffset){
   };
 }
 
-function buildTrade(userId, pretrade, extraDayOffset=0){
+function buildTrade(pretrade){
   const isWin = pretrade.grade==='Setup A' ? Math.random()>.35 : pretrade.grade==='Setup B' ? Math.random()>.5 : Math.random()>.7;
   const isBE = !isWin && Math.random()>.75;
   const resultado = isWin ? 'Win' : isBE ? 'Breakeven' : 'Loss';
@@ -123,7 +122,6 @@ function buildTrade(userId, pretrade, extraDayOffset=0){
   const seguiuPlano = pretrade.tipoent==='Baixo Risco' ? (Math.random()>.2?'Sim':'Não') : (Math.random()>.4?'Sim':'Parcialmente');
 
   return {
-    user_id: userId,
     data: pretrade.data,
     ativo: pretrade.ativo,
     tag: pretrade.tag,
@@ -168,7 +166,7 @@ async function runSeed(){
 
   const ptData = [];
   for(let i=0; i<40; i++){
-    ptData.push(buildPretrade(userId, rndInt(1,90)));
+    ptData.push(buildPretrade(rndInt(1,90)));
   }
 
   const {data:insertedPT, error:ptErr} = await sb.from('pretrades').insert(ptData).select();
@@ -180,7 +178,7 @@ async function runSeed(){
   const tradesToInsert = [];
   for(const pt of insertedPT){
     if(Math.random() > 0.25){ // 75% have a linked trade
-      tradesToInsert.push(buildTrade(userId, pt));
+      tradesToInsert.push(buildTrade(pt));
     }
   }
 
