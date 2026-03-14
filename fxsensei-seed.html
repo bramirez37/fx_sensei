@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>FX Sensei — Seed de Dados</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#07090f;color:#e2e8f0;font-family:'DM Sans',sans-serif;font-size:15px;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+  .box{background:#111827;border:1px solid #1e2d3d;border-radius:12px;padding:2rem;width:min(90vw,520px)}
+  h1{font-size:1.5rem;color:#e8b84b;margin-bottom:.3rem}
+  p{color:#94a3b8;font-size:.85rem;margin-bottom:1.5rem;line-height:1.6}
+  button{background:#e8b84b;border:none;border-radius:6px;color:#07090f;cursor:pointer;font-size:.85rem;font-weight:700;padding:.75rem 2rem;width:100%;margin-bottom:.75rem;letter-spacing:.05em;text-transform:uppercase}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.danger{background:#f43f5e;color:#fff}
+  .log{background:#0d1117;border:1px solid #1e2d3d;border-radius:6px;padding:1rem;font-family:monospace;font-size:.75rem;color:#94a3b8;max-height:320px;overflow-y:auto;margin-top:1rem;white-space:pre-wrap;line-height:1.7}
+  .ok{color:#22c55e}.err{color:#f43f5e}.warn{color:#e8b84b}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>FX Sensei — Seed de Dados</h1>
+  <p>Insere ~40 trades e pré-trades realistas na tua conta Supabase para testes.<br><strong style="color:#f43f5e">⚠️ Usa apenas numa conta de teste. Apaga depois com o botão abaixo.</strong></p>
+  <button id="btn-seed" onclick="runSeed()">Inserir dados de teste</button>
+  <button id="btn-clean" class="danger" onclick="runClean()" style="display:none">Apagar todos os dados de teste</button>
+  <div class="log" id="log">Aguarda...</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://clxfszsrqrodxfaolztk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseGZzenNycXJvZHhmYW9senRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzOTIwMjgsImV4cCI6MjA4ODk2ODAyOH0.0Q8tlUJxG4F31Bs1ts-GPWUfmCmOHg4b3IZ_tGmszsk';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const log = document.getElementById('log');
+function print(msg, cls=''){log.innerHTML += `<span class="${cls}">${msg}</span>\n`; log.scrollTop=log.scrollHeight;}
+function clear(){log.innerHTML='';}
+
+const ativos = ['EURUSD','GBPUSD','XAUUSD','GBPJPY','EURUSD','USDJPY','XAUUSD','EURUSD','GBPUSD'];
+const sessoes = ['Londres','New York','Overlap','Londres','New York'];
+const estruturas = ['Bullish','Bullish','Bearish','Bearish','Bullish'];
+const sinais = ['BoS Bullish','CHoCH Bullish','BoS Bearish','CHoCH Bearish','BoS Bullish'];
+const fibos = ['Discount','Discount','Premium','Premium','50%'];
+const zonas = ['Order Block','Imbalance','Order Block','Break Block','POC'];
+const chegadas = ['Corretiva ✓','Corretiva ✓','Corretiva ✓','Impulsiva ✗','Corretiva ✓'];
+const tipoents = ['Baixo Risco','Baixo Risco','Baixo Risco','Alto Risco','Baixo Risco'];
+const emocoes = ['Calmo','Neutro','Confiante','Ansioso','Calmo','Neutro','Impulsivo'];
+const qualidades = ['Excelente','Boa','Boa','Razoável','Excelente','Boa','Má'];
+const tags = ['OB_Reteste','FVG_Fill','CHoCH_Entry','BoS_Continuation','OB_London','PDL_Sweep','PWH_Rejection'];
+const conf_pool = ['Order Block','Imbalance','0.78 Fibo','50% Fibo','Liquidez','PDH/PDL','CHoCH micro','Volume'];
+
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function rndInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function rndFloat(min,max){ return parseFloat((Math.random()*(max-min)+min).toFixed(1)); }
+function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()-days); return d.toISOString().split('T')[0]; }
+function rndConfs(){ const c=[...conf_pool].sort(()=>Math.random()-.5).slice(0,rndInt(2,5)); return c.join(', '); }
+
+function buildPretrade(userId, dayOffset){
+  const dir = Math.random()>.5 ? 'Compra' : 'Venda';
+  const estrutura = dir==='Compra' ? 'Bullish' : 'Bearish';
+  const fibo = dir==='Compra' ? 'Discount' : 'Premium';
+  const tipoent = Math.random()>.3 ? 'Baixo Risco' : 'Alto Risco';
+  const chegada = Math.random()>.25 ? 'Corretiva ✓' : 'Impulsiva ✗';
+  const zonaok = Math.random()>.15 ? 'Sim ✓' : 'Não';
+  const stopok = Math.random()>.1 ? 'Sim ✓' : 'Não';
+  const mental = rndInt(2,5);
+  const liqcap = Math.random()>.4 ? 'Sim ✓' : 'Não';
+  const volq = Math.random()>.4 ? 'Sim ✓' : 'N/D';
+  const volc = Math.random()>.4 ? 'Sim ✓' : 'N/D';
+  const decisao = ['p','p','p','e','c'][rndInt(0,4)];
+
+  // Score calc
+  let score = 0;
+  if((dir==='Compra'&&estrutura==='Bullish')||(dir==='Venda'&&estrutura==='Bearish')) score+=2;
+  if((dir==='Compra'&&fibo==='Discount')||(dir==='Venda'&&fibo==='Premium')) score+=2;
+  if(zonaok==='Sim ✓') score+=2;
+  if(chegada==='Corretiva ✓') score+=2;
+  if(tipoent==='Baixo Risco') score+=2;
+  if(stopok==='Sim ✓') score+=1;
+  if(mental>=4) score+=1;
+  const grade = score>=9 ? 'Setup A' : score>=6 ? 'Setup B' : 'Fraco';
+
+  return {
+    user_id: userId,
+    data: dateOffset(dayOffset),
+    ativo: rnd(ativos),
+    tag: rnd(tags),
+    sessao: rnd(sessoes),
+    tfmacro: rnd(['H4','D','H1']),
+    tfmicro: rnd(['M15','M5','M30']),
+    rr: rndFloat(1.5,4),
+    direcao: dir,
+    estrutura,
+    sinal: dir==='Compra' ? rnd(['BoS Bullish','CHoCH Bullish']) : rnd(['BoS Bearish','CHoCH Bearish']),
+    fibo,
+    contexto: 'Mercado em tendência clara. Zona bem definida no TF macro.',
+    liquidez: 'PDH, PDL',
+    liqcap,
+    inducao: rnd(['Sim','Não','Incerto']),
+    volq,
+    volc,
+    tipozona: rnd(zonas),
+    zonaok,
+    conf: rndConfs(),
+    chegada,
+    tipoent,
+    gatilho: tipoent==='Baixo Risco' ? 'CHoCH bullish no M15 dentro do OB' : 'Entrada direta no topo do OB',
+    stop: dir==='Compra' ? 'Abaixo do mínimo do OB' : 'Acima do máximo do OB',
+    stopok,
+    mental: String(mental),
+    decisao,
+    just: 'Confluências presentes. Score adequado. Aguardar gatilho.',
+    score,
+    grade
+  };
+}
+
+function buildTrade(userId, pretrade, extraDayOffset=0){
+  const isWin = pretrade.grade==='Setup A' ? Math.random()>.35 : pretrade.grade==='Setup B' ? Math.random()>.5 : Math.random()>.7;
+  const isBE = !isWin && Math.random()>.75;
+  const resultado = isWin ? 'Win' : isBE ? 'Breakeven' : 'Loss';
+  const resultado_r = isWin ? rndFloat(1.5, parseFloat(pretrade.rr)+0.5) : isBE ? 0 : rndFloat(-1.2, -0.5);
+  const seguiuPlano = pretrade.tipoent==='Baixo Risco' ? (Math.random()>.2?'Sim':'Não') : (Math.random()>.4?'Sim':'Parcialmente');
+
+  return {
+    user_id: userId,
+    data: pretrade.data,
+    ativo: pretrade.ativo,
+    tag: pretrade.tag,
+    direcao: pretrade.direcao,
+    resultado,
+    resultado_r,
+    rr_real: resultado==='Win' ? resultado_r : null,
+    pretrade_id: pretrade.id,
+    pretrade_score: pretrade.score,
+    pretrade_grade: pretrade.grade,
+    tipoent: pretrade.tipoent,
+    tipozona: pretrade.tipozona,
+    gatilho: pretrade.tipoent==='Baixo Risco' ? 'CHoCH' : 'Entrada direta (alto risco)',
+    estrutura: pretrade.estrutura,
+    pd: pretrade.fibo,
+    liquidez: pretrade.liqcap,
+    sessao: pretrade.sessao,
+    chegada: pretrade.chegada==='Corretiva ✓' ? 'Corretiva (ideal)' : 'Impulsiva',
+    qualidade: rnd(qualidades),
+    emocao: rnd(emocoes),
+    stopok: Math.random()>.1 ? 'Sim' : 'Não',
+    plano: seguiuPlano,
+    notas: resultado==='Win' ? 'Trade seguiu o plano. Entrada limpa na zona.' : resultado==='Loss' ? 'Stop atingido. Revisar chegada impulsiva.' : 'Saída no break-even por incerteza.'
+  };
+}
+
+async function runSeed(){
+  clear();
+  document.getElementById('btn-seed').disabled=true;
+  print('🔍 A verificar sessão...', 'warn');
+
+  const {data:sess} = await sb.auth.getSession();
+  if(!sess?.session?.user){
+    print('❌ Não estás autenticado. Abre primeiro o FX Sensei e faz login.', 'err');
+    document.getElementById('btn-seed').disabled=false;
+    return;
+  }
+  const userId = sess.session.user.id;
+  print(`✓ Autenticado como ${sess.session.user.email}`, 'ok');
+  print('');
+  print('⏳ A criar 40 pré-trades...', 'warn');
+
+  const ptData = [];
+  for(let i=0; i<40; i++){
+    ptData.push(buildPretrade(userId, rndInt(1,90)));
+  }
+
+  const {data:insertedPT, error:ptErr} = await sb.from('pretrades').insert(ptData).select();
+  if(ptErr){ print('❌ Erro ao inserir pré-trades: '+ptErr.message, 'err'); document.getElementById('btn-seed').disabled=false; return; }
+  print(`✓ ${insertedPT.length} pré-trades inseridos`, 'ok');
+
+  // Create trades for ~75% of pretrades
+  print('⏳ A criar trades ligados...', 'warn');
+  const tradesToInsert = [];
+  for(const pt of insertedPT){
+    if(Math.random() > 0.25){ // 75% have a linked trade
+      tradesToInsert.push(buildTrade(userId, pt));
+    }
+  }
+
+  const {data:insertedT, error:tErr} = await sb.from('trades').insert(tradesToInsert).select();
+  if(tErr){ print('❌ Erro ao inserir trades: '+tErr.message, 'err'); document.getElementById('btn-seed').disabled=false; return; }
+  print(`✓ ${insertedT.length} trades inseridos`, 'ok');
+
+  print('');
+  print('🎉 Concluído! Abre o FX Sensei e vai ao Dashboard.', 'ok');
+  print('Quando terminares os testes, clica "Apagar todos os dados de teste".', 'warn');
+  document.getElementById('btn-clean').style.display='block';
+  document.getElementById('btn-seed').disabled=false;
+}
+
+async function runClean(){
+  if(!confirm('Apagar TODOS os trades e pré-trades desta conta? Esta ação não pode ser desfeita.')) return;
+  clear();
+  document.getElementById('btn-clean').disabled=true;
+  print('🗑️ A apagar trades...', 'warn');
+
+  const {data:sess} = await sb.auth.getSession();
+  if(!sess?.session?.user){ print('❌ Não autenticado.', 'err'); return; }
+  const userId = sess.session.user.id;
+
+  const {error:tErr} = await sb.from('trades').delete().eq('user_id', userId);
+  if(tErr){ print('❌ Erro: '+tErr.message, 'err'); return; }
+  print('✓ Trades apagados', 'ok');
+
+  const {error:ptErr} = await sb.from('pretrades').delete().eq('user_id', userId);
+  if(ptErr){ print('❌ Erro: '+ptErr.message, 'err'); return; }
+  print('✓ Pré-trades apagados', 'ok');
+  print('');
+  print('✓ Base de dados limpa.', 'ok');
+  document.getElementById('btn-clean').disabled=false;
+}
+</script>
+</body>
+</html>
