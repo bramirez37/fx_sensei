@@ -758,7 +758,6 @@ async function doLogout(){
   selectedPretradeId = null;
   selectedTradeId = null;
   currentDec = '';
-  _appBooted = false;
   await sb.auth.signOut();
   showAuth();
 }
@@ -785,16 +784,14 @@ function showApp(){
   if(app) app.style.display='block';
 }
 
-let _appBooted = false;
-
 sb.auth.onAuthStateChange(async (_event, session) => {
   try{
-    if(_event === 'SIGNED_IN' && _appBooted){
+    if(_event === 'SIGNED_IN' && !currentUser){
+      // Only handle SIGNED_IN if not already booted (avoids race with bootstrapApp)
       currentUser = session.user;
       await initApp();
     } else if(_event === 'SIGNED_OUT'){
       currentUser = null;
-      _appBooted = false;
       showAuth();
     }
   }catch(e){
@@ -809,8 +806,7 @@ async function bootstrapApp(){
     const { data, error } = await sb.auth.getSession();
     if(error) throw error;
     if(data?.session?.user){
-      currentUser = data.session.user;
-      _appBooted = true;
+      currentUser = data.session.user; // Set before initApp so onAuthStateChange skips
       await initApp();
     }else{
       showAuth();
