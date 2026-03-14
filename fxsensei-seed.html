@@ -55,7 +55,6 @@ function rndFloat(min,max){ return parseFloat((Math.random()*(max-min)+min).toFi
 function dateOffset(days){ const d=new Date(); d.setDate(d.getDate()-days); return d.toISOString().split('T')[0]; }
 function rndConfs(){ const c=[...conf_pool].sort(()=>Math.random()-.5).slice(0,rndInt(2,5)); return c.join(', '); }
 
-function uuid(){ return crypto.randomUUID(); }
 function buildPretrade(userId, dayOffset){
   const dir = Math.random()>.5 ? 'Compra' : 'Venda';
   const estrutura = dir==='Compra' ? 'Bullish' : 'Bearish';
@@ -82,7 +81,6 @@ function buildPretrade(userId, dayOffset){
   const grade = score>=9 ? 'Setup A' : score>=6 ? 'Setup B' : 'Fraco';
 
   return {
-    id: uuid(),
     user_id: userId,
     data: dateOffset(dayOffset),
     ativo: rnd(ativos),
@@ -125,7 +123,6 @@ function buildTrade(userId, pretrade, extraDayOffset=0){
   const seguiuPlano = pretrade.tipoent==='Baixo Risco' ? (Math.random()>.2?'Sim':'Não') : (Math.random()>.4?'Sim':'Parcialmente');
 
   return {
-    id: uuid(),
     user_id: userId,
     data: pretrade.data,
     ativo: pretrade.ativo,
