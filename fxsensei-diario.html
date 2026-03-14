@@ -225,7 +225,7 @@
 <!-- MAIN APP -->
 <div id="app" style="display:none">
   <header>
-    <div class="logo">FX Sensei <span>/ diário</span><small>v6.1 · cloud</small></div>
+    <div class="logo">FX Sensei <span>/ diário</span><small>v6.2 · cloud</small></div>
     <div class="hright">
       <span class="sync-dot" id="sync-dot"></span>
       <div class="hdate" id="hdate"></div>
@@ -784,10 +784,13 @@ function showApp(){
   if(app) app.style.display='block';
 }
 
+// _booting: true during initial bootstrapApp to block onAuthStateChange race
+let _booting = false;
+
 sb.auth.onAuthStateChange(async (_event, session) => {
+  if(_booting) return; // bootstrapApp is handling this
   try{
-    if(_event === 'SIGNED_IN' && !currentUser){
-      // Only handle SIGNED_IN if not already booted (avoids race with bootstrapApp)
+    if(_event === 'SIGNED_IN'){
       currentUser = session.user;
       await initApp();
     } else if(_event === 'SIGNED_OUT'){
@@ -801,12 +804,13 @@ sb.auth.onAuthStateChange(async (_event, session) => {
 });
 
 async function bootstrapApp(){
+  _booting = true;
   try{
     showLoader();
     const { data, error } = await sb.auth.getSession();
     if(error) throw error;
     if(data?.session?.user){
-      currentUser = data.session.user; // Set before initApp so onAuthStateChange skips
+      currentUser = data.session.user;
       await initApp();
     }else{
       showAuth();
@@ -814,6 +818,8 @@ async function bootstrapApp(){
   }catch(e){
     console.error('Bootstrap error:', e);
     showAuth('Erro ao iniciar. Abre a consola e valida a configuração Supabase.');
+  } finally {
+    _booting = false;
   }
 }
 
